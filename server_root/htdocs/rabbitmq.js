@@ -236,14 +236,15 @@ Object.extend(RabbitChannel.prototype,
     },
 
     handleAsyncMessage: function (message) {
-        if (this.options.debug) {
-	    this.options.debugLogger({async: message});
-	}
 	var handler = this["handle_async_" + message.method];
 	if (handler) {
 	    (handler.bind(this))(message.args,
 				 message.content,
 				 message.props);
+	} else {
+            if (this.options.debug) {
+		this.options.debugLogger({async: message});
+	    }
 	}
     },
 

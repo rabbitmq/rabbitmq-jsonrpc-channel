@@ -60,7 +60,7 @@ Object.extend(JsonRpcTransaction.prototype,
 	    headers.push('X-JSON-RPC-Timeout', this.options.timeout);
 	}
 	var req = this.buildRequest();
-	this.debugLog({requestX: req});
+	//this.debugLog({requestX: req});
 	this.request =
 	    new Ajax.Request(this.serviceUrl,
 			     { method: 'post',
@@ -77,7 +77,7 @@ Object.extend(JsonRpcTransaction.prototype,
 
     receiveReply: function(ajaxRequest) {
 	var response = JSON.parse(ajaxRequest.responseText);
-	this.debugLog({responseX: response});
+	//this.debugLog({responseX: response});
 	if (response.error) {
 	    if (this.options.debug) {
 		this.debugLog("JsonRPC error:" +
