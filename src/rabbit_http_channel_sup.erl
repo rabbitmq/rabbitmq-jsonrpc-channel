@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 
 start_link() ->
-    {ok, Pid} = supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    {ok, _Pid} = supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
     {ok, {{simple_one_for_one, 10, 10},
