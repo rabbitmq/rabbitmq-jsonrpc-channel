@@ -27,6 +27,7 @@ run: all start_server
 
 RABBIT_SOURCE_ROOT=../AMQ
 start_server:
+	mkdir -p $(SERVER_ROOT)/logs
 	make -C $(RABBIT_SOURCE_ROOT)/erlang/rabbit run \
 		RABBIT_ARGS='-pa '"$$(pwd)/$(EBIN_DIR)"' -rabbit \
 			rabbit_http_conf \"'"$$(pwd)"'/ebin/httpd.conf.tmp\" \
