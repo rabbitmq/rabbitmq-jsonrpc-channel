@@ -2,7 +2,7 @@ ServerName localhost
 ServerRoot @SERVER_ROOT@
 DocumentRoot @SERVER_ROOT@/htdocs
 
-Port 5671
+Port 55672
 
 Modules mod_alias mod_auth mod_jsonrpc mod_actions mod_cgi mod_responsecontrol mod_trace mod_range mod_head mod_include mod_dir mod_get mod_log mod_disk_log
 
