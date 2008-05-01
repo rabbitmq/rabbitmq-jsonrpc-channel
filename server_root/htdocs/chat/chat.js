@@ -45,6 +45,7 @@ function chatMain() {
     log("Starting.");
 
     $("userName").value = initUsername();
+    $("chatMessage").focus();
 
     var rabbitService = new JsonRpcService("/rpc/rabbitmq", onRabbitServiceReady,
 					   {debug: true,
