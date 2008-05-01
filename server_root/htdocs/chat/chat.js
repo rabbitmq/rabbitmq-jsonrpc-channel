@@ -56,8 +56,7 @@ function chatMain() {
 	log("onRabbitServiceReady");
 	channel = new RabbitChannel(rabbitService, on_open,
 				    { debug: true,
-				      debugLogger: log,
-				      timeout: 5 });
+				      debugLogger: log });
     }
 
     function on_open() {
