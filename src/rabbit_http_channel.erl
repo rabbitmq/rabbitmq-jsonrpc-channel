@@ -233,7 +233,7 @@ init([Oid, _ModData, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 
     process_flag(trap_exit, true),
 
-    {ok, U} = rabbit_access_control:user_pass_login(Username, Password),
+    U = rabbit_access_control:user_pass_login(Username, Password),
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
     ChPid = rabbit_channel:start_link(self(), self(), Username, VHostPath),
 
