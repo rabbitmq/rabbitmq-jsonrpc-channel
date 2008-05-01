@@ -112,7 +112,7 @@ Object.extend(RabbitChannel.prototype,
 					    this._dval(passive, false),
 					    this._dval(durable, false),
 					    this._dval(exclusive, false),
-					    this._dval(auto_delete, false),
+					    this._dval(auto_delete, true),
 					    false, // nowait
 					    this._dval(arguments, {})])
 	.addReplyTransformer(this._extractArg(0));
