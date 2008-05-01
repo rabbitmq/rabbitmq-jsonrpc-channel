@@ -94,6 +94,18 @@ Object.extend(RabbitChannel.prototype,
 	.addReplyTransformer(this._extractArg(0));
     },
 
+    exchangeDeclare: function(ticket, exchange, type, passive, durable, auto_delete, arguments) {
+        return this._call("exchange.declare", [ticket,
+					       exchange,
+					       this._dval(type, "direct"),
+					       this._dval(passive, false),
+					       this._dval(durable, false),
+					       this._dval(auto_delete, false),
+					       false, // internal
+					       false, // nowait
+					       this._dval(arguments, {})]);
+    },
+
     queueDeclare: function(ticket, queue, passive, durable, exclusive, auto_delete, arguments) {
         return this._call("queue.declare", [ticket,
 					    this._dval(queue, ""),
@@ -104,6 +116,15 @@ Object.extend(RabbitChannel.prototype,
 					    false, // nowait
 					    this._dval(arguments, {})])
 	.addReplyTransformer(this._extractArg(0));
+    },
+
+    queueBind: function(ticket, queue, exchange, routing_key, arguments) {
+        return this._call("queue.bind", [ticket,
+					 queue,
+					 exchange,
+					 this._dval(routing_key, ""),
+					 false, // nowait
+					 this._dval(arguments, {})]);
     },
 
     basicConsume: function(ticket, queue, consumer, options) {
