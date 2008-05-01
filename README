@@ -11,10 +11,10 @@ To run the server with the additional HTTP support,
   $ make run
 
 The Makefile defaults to searching for the RabbitMQ broker in
-../AMQ/erlang/rabbit, and the "../AMQ" part can be overridden by
+../rabbitmq/erlang/rabbit, and the "../rabbitmq" part can be overridden by
 setting RABBIT_SOURCE_ROOT, like so:
 
-  $ make RABBIT_SOURCE_ROOT=path/to/AMQ run
+  $ make RABBIT_SOURCE_ROOT=path/to/rabbitmq run
 
 The broker should start, and output a series of "starting ..."
 messages. A successful start looks like:
@@ -47,24 +47,31 @@ And finally, if the RABBIT_SOURCE_ROOT is wrong, or it is right but
 the code is not compiled or not on your erlang search path, you will
 see:
 
-  erlc -I include -o ebin -Wall +debug_info  src/rabbit_http.erl
-  erlc -I include -o ebin -Wall +debug_info  src/rabbit_http_channel.erl
-  src/rabbit_http_channel.erl:29: can't find include lib "rabbitmq_server/include/rabbit_framing.hrl"
+  erlc -I ../rabbitmq/erlang/rabbit/include -I include -o ebin -Wall +debug_info  src/rabbit_http_channel.erl
+  src/rabbit_http_channel.erl:28: can't find include file "rabbit.hrl"
+  src/rabbit_http_channel.erl:29: can't find include file "rabbit_framing.hrl"
+  src/rabbit_http_channel.erl:133: record content undefined
+  src/rabbit_http_channel.erl:136: variable 'Props' is unbound
+  src/rabbit_http_channel.erl:139: variable 'BodyFragmentsRev' is unbound
   src/rabbit_http_channel.erl:146: record 'P_basic' undefined
+  src/rabbit_http_channel.erl:198: record content undefined
   src/rabbit_http_channel.erl:220: record 'P_basic' undefined
   src/rabbit_http_channel.erl:240: record 'channel.open' undefined
   src/rabbit_http_channel.erl:263: record 'P_basic' undefined
   src/rabbit_http_channel.erl:276: record 'channel.open_ok' undefined
+  src/rabbit_http_channel.erl:146: Warning: function build_props/1 is unused
+  src/rabbit_http_channel.erl:197: Warning: variable 'Bin' is unused
+  src/rabbit_http_channel.erl:197: Warning: variable 'Props' is unused
   make: *** [ebin/rabbit_http_channel.beam] Error 1
 
 All that aside, once the server starts successfully, including a
 "...done" for the "starting HTTP-JSON-listeners" line, you should be
 able to visit
 
-  http://localhost:5671/
+  http://localhost:55672/
 
 and get a webpage. Clicking on "Simple JSONRPC test" will run a small
-test application. Successful output of http://localhost:5671/test/index.html
+test application. Successful output of http://localhost:55672/test/index.html
 at the time of writing is:
 
   test_main
@@ -75,11 +82,11 @@ at the time of writing is:
   {"installGenericProxy":{"name":"call","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"}]}}
   {"installGenericProxy":{"name":"cast","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"},{"name":"content","type":"str"},{"name":"props","type":"arr"}]}}
   handle_channel_ready
-  {"q1":"test-queue-1a"}
   {"q2":"test-queue-1b"}
+  {"q1":"test-queue-1a"}
   {"consumeOk":"aa-cons-tag1"}
-  {"delivery":{"content":"hello, world","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-1a","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
-  {"delivery2":{"content":"hello, world, again! pub 2","delivery_tag":2,"redelivered":false,"exchange":"","routing_key":"test-queue-1b","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":"something22","expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
+  {"delivery2":{"content":"hello, world, again! pub 2","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-1b","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":"something22","expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
+  {"delivery":{"content":"hello, world","delivery_tag":2,"redelivered":false,"exchange":"","routing_key":"test-queue-1a","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
   {"cancelOk":"aa-cons-tag1"}
   {"installGenericProxy":{"name":"poll","idempotent":false,"params":[]}}
   {"installGenericProxy":{"name":"close","idempotent":false,"params":[]}}
@@ -98,5 +105,5 @@ The source to the test program is in
   server_root/htdocs/test/index.html
 
 Tony Garnock-Jones <tonyg@rabbitmq.com>
-30 Jan 2008
+1 May 2008
 http://lists.rabbitmq.com/cgi-bin/mailman/listinfo/
