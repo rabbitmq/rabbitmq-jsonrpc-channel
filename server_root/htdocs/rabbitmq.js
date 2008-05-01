@@ -118,6 +118,16 @@ Object.extend(RabbitChannel.prototype,
 	.addReplyTransformer(this._extractArg(0));
     },
 
+    queueDelete: function(ticket, queue, if_unused, if_empty) {
+        return this._call("queue.delete", [ticket,
+					   this._dval(queue, ""),
+					   this._dval(if_unused, false),
+					   this._dval(if_empty, false),
+					   false // nowait
+					  ])
+	.addReplyTransformer(this._extractArg(0));
+    },
+
     queueBind: function(ticket, queue, exchange, routing_key, arguments) {
         return this._call("queue.bind", [ticket,
 					 queue,
