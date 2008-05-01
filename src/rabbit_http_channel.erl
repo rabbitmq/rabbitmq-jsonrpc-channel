@@ -25,8 +25,8 @@
 -module(rabbit_http_channel).
 -behaviour(gen_server).
 
--include_lib("rabbitmq_server/include/rabbit.hrl").
--include_lib("rabbitmq_server/include/rabbit_framing.hrl").
+-include("rabbit.hrl").
+-include("rabbit_framing.hrl").
 
 -export([open/2, start_link/3]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
