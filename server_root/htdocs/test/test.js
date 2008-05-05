@@ -13,7 +13,7 @@ function testMain() {
 	channel = new RabbitChannel(channelFactory, handle_channel_ready,
 				    { debug: true,
 				      debugLogger: log,
-				      timeout: 5 });
+				      channelTimeout: 5 });
      }
 
     function handle_channel_ready() {
@@ -80,7 +80,7 @@ function testMain() {
         channel = new RabbitChannel(channelFactory, test_cancel,
 				    { debug: true,
 				      debugLogger: log,
-				      timeout: 6 });
+				      channelTimeout: 6 });
     }
 
     function test_cancel(channel) {

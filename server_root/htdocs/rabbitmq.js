@@ -35,7 +35,7 @@ Object.extend(RabbitChannel.prototype,
 	    realm: "/data",
 	    debug: false,
 	    debugLogger: alert,
-	    timeout: 10 /* seconds; zero means "do not specify" */
+	    channelTimeout: 10 /* seconds; zero means "do not specify" */
 	};
 	Object.extend(this.options, options || {});
         this.consumers = {};
@@ -44,7 +44,7 @@ Object.extend(RabbitChannel.prototype,
 
 	factory.open(this.options.username,
 		     this.options.password,
-		     this.options.timeout,
+		     this.options.channelTimeout,
 		     this.options.virtualHost)
 	.addCallback(channel_created.bind(this));
 
@@ -53,7 +53,7 @@ Object.extend(RabbitChannel.prototype,
 					      ready.bind(this),
 					      {debug: this.options.debug,
 					       debugLogger: this.options.debugLogger,
-					       timeout: this.options.timeout * 1000});
+					       timeout: this.options.channelTimeout * 1000});
 	}
 
 	function ready(result) {
