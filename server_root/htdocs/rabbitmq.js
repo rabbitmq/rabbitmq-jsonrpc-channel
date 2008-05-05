@@ -32,6 +32,7 @@ Object.extend(RabbitChannel.prototype,
 	    username: "guest",
 	    password: "guest",
 	    virtualHost: null,
+	    realm: "/data",
 	    debug: false,
 	    debugLogger: alert,
 	    timeout: 10 /* seconds; zero means "do not specify" */
@@ -39,6 +40,7 @@ Object.extend(RabbitChannel.prototype,
 	Object.extend(this.options, options || {});
         this.consumers = {};
         this.alive = true;
+	this.ticket = null;
 
 	factory.open(this.options.username,
 		     this.options.password,
@@ -59,6 +61,11 @@ Object.extend(RabbitChannel.prototype,
             Event.observe(window, 'unload', this.close.bind(this));
             Event.observe(window, 'pagehide', this.close.bind(this));
 
+	    this.accessRequest(this.options.realm)
+	    .addCallback(ticket_request_complete.bind(this));
+	}
+
+	function ticket_request_complete() {
             readyFn(this);
         }
     },
@@ -84,6 +91,10 @@ Object.extend(RabbitChannel.prototype,
 	return function(reply) { return reply.args[index]; };
     },
 
+    _setTicket: function(ticket) {
+	this.ticket = ticket;
+    },
+
     accessRequest: function(realm, exclusive, passive, active, write, read) {
 	return this._call("access.request", [this._dval(realm, "/data"),
 					     this._dval(exclusive, false),
@@ -91,11 +102,12 @@ Object.extend(RabbitChannel.prototype,
 					     this._dval(active, true),
 					     this._dval(write, true),
 					     this._dval(read, true)])
-	.addReplyTransformer(this._extractArg(0));
+	.addReplyTransformer(this._extractArg(0))
+	.addCallback(this._setTicket.bind(this));
     },
 
-    exchangeDeclare: function(ticket, exchange, type, passive, durable, auto_delete, arguments) {
-        return this._call("exchange.declare", [ticket,
+    exchangeDeclare: function(exchange, type, passive, durable, auto_delete, arguments) {
+        return this._call("exchange.declare", [this.ticket,
 					       exchange,
 					       this._dval(type, "direct"),
 					       this._dval(passive, false),
@@ -106,8 +118,8 @@ Object.extend(RabbitChannel.prototype,
 					       this._dval(arguments, {})]);
     },
 
-    queueDeclare: function(ticket, queue, passive, durable, exclusive, auto_delete, arguments) {
-        return this._call("queue.declare", [ticket,
+    queueDeclare: function(queue, passive, durable, exclusive, auto_delete, arguments) {
+        return this._call("queue.declare", [this.ticket,
 					    this._dval(queue, ""),
 					    this._dval(passive, false),
 					    this._dval(durable, false),
@@ -118,8 +130,8 @@ Object.extend(RabbitChannel.prototype,
 	.addReplyTransformer(this._extractArg(0));
     },
 
-    queueDelete: function(ticket, queue, if_unused, if_empty) {
-        return this._call("queue.delete", [ticket,
+    queueDelete: function(queue, if_unused, if_empty) {
+        return this._call("queue.delete", [this.ticket,
 					   this._dval(queue, ""),
 					   this._dval(if_unused, false),
 					   this._dval(if_empty, false),
@@ -128,8 +140,8 @@ Object.extend(RabbitChannel.prototype,
 	.addReplyTransformer(this._extractArg(0));
     },
 
-    queueBind: function(ticket, queue, exchange, routing_key, arguments) {
-        return this._call("queue.bind", [ticket,
+    queueBind: function(queue, exchange, routing_key, arguments) {
+        return this._call("queue.bind", [this.ticket,
 					 queue,
 					 exchange,
 					 this._dval(routing_key, ""),
@@ -137,7 +149,7 @@ Object.extend(RabbitChannel.prototype,
 					 this._dval(arguments, {})]);
     },
 
-    basicConsume: function(ticket, queue, consumer, options) {
+    basicConsume: function(queue, consumer, options) {
 	o = {
 	    consumer_tag: "",
 	    no_local: false,
@@ -145,7 +157,7 @@ Object.extend(RabbitChannel.prototype,
 	    exclusive: false
 	};
 	Object.extend(o, options || {});
-	return this._call("basic.consume", [ticket,
+	return this._call("basic.consume", [this.ticket,
 					    queue,
 					    o.consumer_tag,
 					    o.no_local,
@@ -196,8 +208,8 @@ Object.extend(RabbitChannel.prototype,
 		props.cluster_id];
     },
 
-    basicPublish: function(ticket, exchange, routing_key, message, props, mandatory, immediate) {
-	this._cast("basic.publish", [ticket,
+    basicPublish: function(exchange, routing_key, message, props, mandatory, immediate) {
+	this._cast("basic.publish", [this.ticket,
 				     exchange,
 				     routing_key,
 				     this._dval(mandatory, false),
@@ -296,10 +308,9 @@ Object.extend(RabbitChannel.prototype,
 
 AmqpRpcClient = Class.create();
 Object.extend(AmqpRpcClient.prototype, {
-    initialize: function(service, ticket, exchange, routing_key) {
+    initialize: function(service, exchange, routing_key) {
         log(">>>>>>>>>>>>>>> ampq rpc client initing");
         this.amqp = service;
-        this.ticket = ticket;
         this.exchange = exchange;
         this.routing_key = routing_key || "";
         this.nextCorrelationId = 333;
@@ -307,10 +318,10 @@ Object.extend(AmqpRpcClient.prototype, {
         this.queueName = null;
         this.pendingRequests = [];
 
-        service.queueDeclare(this.ticket, "", false, true).addCallback(queue_declared.bind(this));
+        service.queueDeclare("", false, true).addCallback(queue_declared.bind(this));
 
         function queue_declared(queueName) {
-            var msg = new BasicConsume(this.ticket, queueName, true,
+            var msg = new BasicConsume(queueName, true,
                     true, this.handleReply.bind(this));
             this.amqp.rpc(msg).addCallback(consume_ok.bind(this));
 
@@ -333,7 +344,7 @@ Object.extend(AmqpRpcClient.prototype, {
             this.pendingRequests.push(p);
         } else {
             this.amqp.basicPublish(
-                    this.ticket, JSON.stringify(p.request),
+                    JSON.stringify(p.request),
                     this.exchange, this.routing_key, false, false,
             {reply_to: this.queueName, correlation_id: p.correlationId});
         }

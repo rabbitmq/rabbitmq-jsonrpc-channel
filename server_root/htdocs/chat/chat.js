@@ -1,5 +1,4 @@
 var channel;
-var ticket;
 var queueName = null;
 
 function mkElement(name, cls) {
@@ -61,25 +60,19 @@ function chatMain() {
 
     function on_open() {
 	log("on_open");
-	channel.accessRequest("/data").addCallback(on_ticket);
-    }
-
-    function on_ticket(newTicket) {
-	log("on_ticket");
-	ticket = newTicket;
 	change_channel();
     }
 }
 
 function change_channel() {
     log("change_channel: " + $("channelName").value);
-    channel.exchangeDeclare(ticket, $("channelName").value, "fanout")
+    channel.exchangeDeclare($("channelName").value, "fanout")
     .addCallback(on_exchange_declared);
 
     function on_exchange_declared() {
 	log("on_exchange_declared");
 	if (queueName != null) {
-	    channel.queueDelete(ticket, queueName)
+	    channel.queueDelete(queueName)
 	    .addCallback(function (messageCount) {
 			     log("queue deleted");
 			     declare_fresh_queue();
@@ -93,19 +86,19 @@ function change_channel() {
 
     function declare_fresh_queue() {
 	log("declare_fresh_queue");
-	channel.queueDeclare(ticket).addCallback(on_queue_declared);
+	channel.queueDeclare().addCallback(on_queue_declared);
     }
 
     function on_queue_declared(newQueueName) {
 	log("on_queue_declared");
 	queueName = newQueueName;
-	channel.queueBind(ticket, queueName, $("channelName").value).addCallback(on_queue_bound);
+	channel.queueBind(queueName, $("channelName").value).addCallback(on_queue_bound);
     }
 
     function on_queue_bound() {
 	log("on_queue_bound");
 	$("chatOutput").innerHTML = "";
-	channel.basicConsume(ticket, queueName,
+	channel.basicConsume(queueName,
 			     {
 				 deliver: function(delivery) {
 				     var mimeType = delivery.props.content_type;
@@ -125,7 +118,7 @@ function change_channel() {
 }
 
 function send_chat() {
-    channel.basicPublish(ticket, $("channelName").value, $("userName").value,
+    channel.basicPublish($("channelName").value, $("userName").value,
 			 $("chatMessage").value,
 			 { content_type: "text/plain" });
     $("chatMessage").value = "";

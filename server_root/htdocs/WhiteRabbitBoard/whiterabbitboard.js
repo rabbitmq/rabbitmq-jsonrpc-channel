@@ -14,7 +14,6 @@ function setupWhiteRabbitBoard() {
 					    debugLogger: log,
 					    timeout: 30000});
     var channel;
-    var ticket;
     var queueName;
     var exchangeName = "canvasPainter";
 
@@ -27,34 +26,28 @@ function setupWhiteRabbitBoard() {
 
     function on_open() {
 	log("on_open");
-	channel.accessRequest("/data").addCallback(on_ticket);
-    }
-
-    function on_ticket(newTicket) {
-	log("on_ticket");
-	ticket = newTicket;
-	channel.exchangeDeclare(ticket, exchangeName, "fanout")
+	channel.exchangeDeclare(exchangeName, "fanout")
 	.addCallback(on_exchange_declared);
     }
 
     function on_exchange_declared() {
 	log("on_exchange_declared");
-	channel.queueDeclare(ticket).addCallback(on_queue_declared);
+	channel.queueDeclare().addCallback(on_queue_declared);
     }
 
     function on_queue_declared(newQueueName) {
 	log("on_queue_declared");
 	queueName = newQueueName;
-	channel.queueBind(ticket, queueName, exchangeName).addCallback(on_queue_bound);
+	channel.queueBind(queueName, exchangeName).addCallback(on_queue_bound);
     }
 
     function on_queue_bound() {
 	log("on_queue_bound");
 	sendCanvasPainterEvent = function (event) {
-	    channel.basicPublish(ticket, exchangeName, "", JSON.stringify(event));
+	    channel.basicPublish(exchangeName, "", JSON.stringify(event));
 	};
 	listenToCanvasPainterEvents = function (callback) {
-	    channel.basicConsume(ticket, queueName,
+	    channel.basicConsume(queueName,
 				 {
 				     consumeOk: function(tag) {
 					 log({consumeOk: tag});

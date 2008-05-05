@@ -18,63 +18,60 @@ function testMain() {
 
     function handle_channel_ready() {
         log("handle_channel_ready");
-        channel.accessRequest("/data")
-	.addCallback(function (ticket)
+
+	var queue1 = "test-queue-1a";
+	var queue2 = "test-queue-1b";
+
+	var tag1 = "aa-cons-tag1";
+
+	var msg1 = "hello, world";
+	var msg2 = "hello, world, again! pub 2";
+
+	channel.queueDeclare(queue1)
+	.addCallback(function(reply)
 	{
-	    queue1 = "test-queue-1a";
-	    queue2 = "test-queue-1b";
-
-	    tag1 = "aa-cons-tag1";
-
-	    msg1 = "hello, world";
-	    msg2 = "hello, world, again! pub 2";
-
-	    channel.queueDeclare(ticket, queue1)
-	    .addCallback(function(reply)
-	    {
-		log({q1: reply});
-		channel.basicConsume(ticket, queue1,
-				     {
-					 consumeOk: function(tag) {
-					     log({consumeOk: tag});
-					     this.tag = tag;
-					 },
-					 deliver: function(delivery) {
-					     log({delivery: delivery});
-					     channel.basicAck(delivery.delivery_tag);
-					     channel.basicCancel(this.tag);
-					 },
-					 cancelOk: function(tag) {
-					     log({cancelOk: tag});
-					 }
+	    log({q1: reply});
+	    channel.basicConsume(queue1,
+				 {
+				     consumeOk: function(tag) {
+					 log({consumeOk: tag});
+					 this.tag = tag;
 				     },
-				     { consumer_tag: tag1 })
-		.addCallback(function () {
-				 channel.basicPublish(ticket, "", queue1, msg1);
-			     });
-	    });
+				     deliver: function(delivery) {
+					 log({delivery: delivery});
+					 channel.basicAck(delivery.delivery_tag);
+					 channel.basicCancel(this.tag);
+				     },
+				     cancelOk: function(tag) {
+					 log({cancelOk: tag});
+				     }
+				 },
+				 { consumer_tag: tag1 })
+	    .addCallback(function () {
+			     channel.basicPublish("", queue1, msg1);
+			 });
+	});
 
-            channel.queueDeclare(ticket, queue2)
-            .addCallback(function(reply)
-	    {
-                log({q2: reply});
-		channel.basicConsume(ticket, queue2,
-				     {
-					 consumeOk: function(tag) {
-					     this.tag = tag;
-					 },
-					 deliver: function(delivery) {
-					     log({delivery2: delivery});
-					     channel.basicAck(delivery.delivery_tag);
-					     channel.basicCancel(this.tag)
-					     .addCallback(reopen);
-					 }
-				     })
-		.addCallback(function () {
-				 channel.basicPublish(ticket, "", queue2, msg2,
-						      {reply_to: "something22"});
-			     });
-            });
+        channel.queueDeclare(queue2)
+        .addCallback(function(reply)
+	{
+            log({q2: reply});
+	    channel.basicConsume(queue2,
+				 {
+				     consumeOk: function(tag) {
+					 this.tag = tag;
+				     },
+				     deliver: function(delivery) {
+					 log({delivery2: delivery});
+					 channel.basicAck(delivery.delivery_tag);
+					 channel.basicCancel(this.tag)
+					 .addCallback(reopen);
+				     }
+				 })
+	    .addCallback(function () {
+			     channel.basicPublish("", queue2, msg2,
+						  {reply_to: "something22"});
+			 });
         });
     }
 
@@ -88,39 +85,34 @@ function testMain() {
 
     function test_cancel(channel) {
         log("test basic.cancel compliance");
-        channel.accessRequest("/data")
-	.addCallback(function (ticket)
+
+        var queue = "test-queue-4";
+        var ctag = "my-consumer";
+
+	channel.queueDeclare(queue, false, false, true)
+	.addCallback(function ()
 	{
-	    log({access_request: ticket});
-            queue = "test-queue-4";
-            ctag = "my-consumer";
-	    channel.queueDeclare(ticket, queue, false, false, true)
-	    .addCallback(function ()
-	    {
-		log("queue declare OK");
-		channel.basicConsume(ticket, queue,
-				     {
-					 deliver: function(delivery) {
-					     log({delivery4: delivery});
-					     channel.basicCancel("this-never-existed")
-					     .addCallback(function (x) {
-							      log({"never existed": x});
-							  });
-					     channel.basicCancel(ctag)
-					     .addCallback(function (x) {
-							      log({cancelled: x});
-							      channel.basicPublish(ticket,
-										   "", queue,
-										   "Two");
-							  });
-					 }
-				     },
-				     { consumer_tag: ctag,
-				       no_ack: true })
-		.addCallback(function () {
-				 channel.basicPublish(ticket, "", queue, "One");
-			     });
-	    });
+	    log("queue declare OK");
+	    channel.basicConsume(queue,
+				 {
+				     deliver: function(delivery) {
+					 log({delivery4: delivery});
+					 channel.basicCancel("this-never-existed")
+					 .addCallback(function (x) {
+							  log({"never existed": x});
+						      });
+					 channel.basicCancel(ctag)
+					 .addCallback(function (x) {
+							  log({cancelled: x});
+							  channel.basicPublish("", queue, "Two");
+						      });
+				     }
+				 },
+				 { consumer_tag: ctag,
+				   no_ack: true })
+	    .addCallback(function () {
+			     channel.basicPublish("", queue, "One");
+			 });
 	});
     }
 }
