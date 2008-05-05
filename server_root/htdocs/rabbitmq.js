@@ -24,6 +24,19 @@
 //
 //
 
+function openRabbitChannel(readyFn, options) {
+    var o = {
+	factoryServiceUrl: "/rpc/rabbitmq",
+	timeout: 30000 // timeout for the *factory*, not the channel
+    };
+    Object.extend(o, options || {});
+
+    var factoryService = new JsonRpcService(o.factoryServiceUrl, onServiceReady, o);
+    function onServiceReady() {
+	new RabbitChannel(factoryService, readyFn, o);
+    }
+}
+
 RabbitChannel = Class.create();
 Object.extend(RabbitChannel.prototype,
 {

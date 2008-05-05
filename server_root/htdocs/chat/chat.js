@@ -46,22 +46,12 @@ function chatMain() {
     $("userName").value = initUsername();
     $("chatMessage").focus();
 
-    var rabbitService = new JsonRpcService("/rpc/rabbitmq", onRabbitServiceReady,
-					   {debug: true,
-					    debugLogger: log,
-					    timeout: 30000});
-
-    function onRabbitServiceReady() {
-	log("onRabbitServiceReady");
-	channel = new RabbitChannel(rabbitService, on_open,
-				    { debug: true,
-				      debugLogger: log });
-    }
-
-    function on_open() {
-	log("on_open");
-	change_channel();
-    }
+    openRabbitChannel(function (c) {
+			  channel = c;
+			  change_channel();
+		      },
+		      { debug: true,
+			debugLogger: log });
 }
 
 function change_channel() {

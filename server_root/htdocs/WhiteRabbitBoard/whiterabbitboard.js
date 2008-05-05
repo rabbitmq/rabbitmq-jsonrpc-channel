@@ -9,22 +9,14 @@ var rabbitReadyCallback = null;
 function setupWhiteRabbitBoard() {
     log("Starting.");
 
-    var rabbitService = new JsonRpcService("/rpc/rabbitmq", onRabbitServiceReady,
-					   {debug: true,
-					    debugLogger: log,
-					    timeout: 30000});
     var channel;
     var queueName;
     var exchangeName = "canvasPainter";
 
-    function onRabbitServiceReady() {
-	log("onRabbitServiceReady");
-	channel = new RabbitChannel(rabbitService, on_open,
-				    { debug: true,
-				      debugLogger: log });
-    }
+    openRabbitChannel(on_open, { debug: true, debugLogger: log });
 
-    function on_open() {
+    function on_open(c) {
+	channel = c;
 	log("on_open");
 	channel.exchangeDeclare(exchangeName, "fanout")
 	.addCallback(on_exchange_declared);
