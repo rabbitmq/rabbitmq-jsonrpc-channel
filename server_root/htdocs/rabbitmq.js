@@ -42,6 +42,7 @@ Object.extend(RabbitChannel.prototype,
 {
     initialize: function(factory, readyFn, options) {
 	this.options = {
+	    rpcServiceUrlBase: "/rpc/",
 	    username: "guest",
 	    password: "guest",
 	    virtualHost: null,
@@ -62,7 +63,7 @@ Object.extend(RabbitChannel.prototype,
 	.addCallback(channel_created.bind(this));
 
 	function channel_created(reply) {
-	    this.service = new JsonRpcService(reply.address,
+	    this.service = new JsonRpcService(this.options.rpcServiceUrlBase + reply.service,
 					      ready.bind(this),
 					      {debug: this.options.debug,
 					       debugLogger: this.options.debugLogger,

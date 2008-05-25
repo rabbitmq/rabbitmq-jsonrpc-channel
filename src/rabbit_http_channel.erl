@@ -28,28 +28,28 @@
 -include("rabbit.hrl").
 -include("rabbit_framing.hrl").
 
--export([open/2, start_link/3]).
+-export([open/1, start_link/2]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
 
-open(ModData, Args) ->
-    Oid = list_to_binary(mod_jsonrpc:gen_object_name()),
-    {ok, Pid} = supervisor:start_child(rabbit_http_channel_sup, [Oid, ModData, Args]),
-    Service = mod_jsonrpc:service(Oid,
-                                  <<"urn:uuid:b3f82f69-4f63-424b-8dbb-4fa53f63cf06">>,
-                                  <<"1.2">>,
-                                  [{<<"poll">>, []},
-				   {<<"close">>, []},
-				   {<<"call">>, [{"method", str},
-						 {"args", arr}]},
-				   {<<"cast">>, [{"method", str},
-						 {"args", arr},
-						 {"content", str},
-						 {"props", arr}]}]),
-    mod_jsonrpc:register_service(Pid, Service),
+open(Args) ->
+    Oid = list_to_binary(rfc4627_jsonrpc:gen_object_name()),
+    {ok, Pid} = supervisor:start_child(rabbit_http_channel_sup, [Oid, Args]),
+    Service = rfc4627_jsonrpc:service(Oid,
+				      <<"urn:uuid:b3f82f69-4f63-424b-8dbb-4fa53f63cf06">>,
+				      <<"1.2">>,
+				      [{<<"poll">>, []},
+				       {<<"close">>, []},
+				       {<<"call">>, [{"method", str},
+						     {"args", arr}]},
+				       {<<"cast">>, [{"method", str},
+						     {"args", arr},
+						     {"content", str},
+						     {"props", arr}]}]),
+    rfc4627_jsonrpc:register_service(Pid, Service),
     {ok, Oid}.
 
-start_link(Oid, ModData, Args) ->
-    gen_server:start_link(?MODULE, [Oid, ModData, Args], []).
+start_link(Oid, Args) ->
+    gen_server:start_link(?MODULE, [Oid, Args], []).
 
 %---------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ release_waiters([From | Rest]) ->
 release_rpcs([]) ->
     ok;
 release_rpcs([From | Rest]) ->
-    gen_server:reply(From, mod_jsonrpc:error_response(504, "Closed", null)),
+    gen_server:reply(From, rfc4627_jsonrpc:error_response(504, "Closed", null)),
     release_rpcs(Rest).
 
 reset_waiting_state(State) ->
@@ -209,9 +209,9 @@ cast(MethodAtom, Args, Content, Props, State = #state{ channel = ChPid }) ->
 check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
     case catch list_to_existing_atom(binary_to_list(Method)) of
 	{'EXIT', {badarg, _}} ->
-	    reply(mod_jsonrpc:error_response(404, "AMQP method not found",
-					     {obj, [{"method", Method},
-						    {"args", Args}]}),
+	    reply(rfc4627_jsonrpc:error_response(404, "AMQP method not found",
+						 {obj, [{"method", Method},
+							{"args", Args}]}),
 		  StateBad);
 	MethodAtom ->
 	    noreply(cast(MethodAtom,
@@ -223,7 +223,7 @@ check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
 
 %---------------------------------------------------------------------------
 
-init([Oid, _ModData, [Username, Password, SessionTimeout0, VHostPath0]]) ->
+init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     SessionTimeout = default_param(SessionTimeout0, 10),
     {ok, DefaultVHost} = application:get_env(default_vhost),
     VHostPath = default_param(VHostPath0, DefaultVHost),
@@ -247,9 +247,9 @@ init([Oid, _ModData, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 				waiting_rpcs = queue:new()}),
      SessionTimeoutMs}.
 
-handle_call({jsonrpc, <<"poll">>, _ModData, []}, From, State) ->
+handle_call({jsonrpc, <<"poll">>, _RequestInfo, []}, From, State) ->
     noreply(enqueue_waiter(From, State));
-handle_call({jsonrpc, <<"close">>, _ModData, []},
+handle_call({jsonrpc, <<"close">>, _RequestInfo, []},
 	    _From,
 	    State = #state{outbound = Outbound,
 			   waiting_rpcs = WaitingRpcs,
@@ -258,12 +258,12 @@ handle_call({jsonrpc, <<"close">>, _ModData, []},
     release_rpcs(queue:to_list(WaitingRpcs)),
     release_waiters(WaitingPolls),
     {stop, normal, {result, queue:to_list(Outbound)}, reset_waiting_state(State)};
-handle_call({jsonrpc, <<"call">>, _ModData, [Method, Args]}, From,
+handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
 	    State = #state{waiting_rpcs = WaitingRpcs}) ->
     check_cast(Method, Args, none, #'P_basic'{}, State, State#state{waiting_rpcs =
 								    queue:in(From,
 									     WaitingRpcs)});
-handle_call({jsonrpc, <<"cast">>, _ModData, [Method, Args, Content, Props]}, From, State) ->
+handle_call({jsonrpc, <<"cast">>, _RequestInfo, [Method, Args, Content, Props]}, From, State) ->
     check_cast(Method, Args, Content, Props, State, enqueue_waiter(From, State));
 handle_call(Request, _From, State) ->
     error_logger:error_msg("Unhandled call in ~p: ~p", [?MODULE, Request]),

@@ -30,7 +30,7 @@
 -export([jsonrpc_amqp_invoke/2, jsonrpc_amqp_invoke/3]).
 
 kickstart() ->
-    mod_jsonrpc:start(),
+    rfc4627_jsonrpc:start(),
     {ok, HttpdConf} = application:get_env(rabbit_http_conf),
     {ok, _} = httpd:start(HttpdConf),
     {ok, _} = supervisor:start_child(rabbit_sup,
@@ -42,14 +42,14 @@ kickstart() ->
 
 start_link() ->
     {ok, Pid} = gen_server:start_link(?MODULE, [], []),
-    Service = mod_jsonrpc:service(<<"rabbitmq">>,
-				  <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
-				  <<"1.2">>,
-				  [{<<"open">>, [{"username", str},
-						 {"password", str},
-						 {"sessionTimeout", num},
-						 {"virtualHost", str}]}]),
-    mod_jsonrpc:register_service(Pid, Service),
+    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
+				      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
+				      <<"1.2">>,
+				      [{<<"open">>, [{"username", str},
+						     {"password", str},
+						     {"sessionTimeout", num},
+						     {"virtualHost", str}]}]),
+    rfc4627_jsonrpc:register_service(Pid, Service),
     {ok, Pid}.
 
 jsonrpc_amqp_invoke(Name, Fun) ->
@@ -66,10 +66,10 @@ jsonrpc_amqp_invoke(Name, Fun, ErrorTransformer) ->
                                               M when is_list(M) -> list_to_binary(M);
                                               M when is_atom(M) -> list_to_binary(atom_to_list(M))
 					  end}]},
-            ErrorTransformer(mod_jsonrpc:error_response(Code, TextBin, ErrorJson));
+            ErrorTransformer(rfc4627_jsonrpc:error_response(Code, TextBin, ErrorJson));
         {'EXIT', Reason} ->
             ErrorTransformer
-              (mod_jsonrpc:error_response(
+              (rfc4627_jsonrpc:error_response(
                  500,
                  list_to_binary(lists:flatten(
                                   io_lib:format("~p: ~p",[Name, Reason]))),
@@ -85,10 +85,10 @@ jsonrpc_amqp_invoke(Name, Fun, ErrorTransformer) ->
 init(_Args) ->
     {ok, nostate}.
 
-handle_call({jsonrpc, <<"open">>, ModData, Args}, _From, State) ->
-    {ok, Oid} = rabbit_http_channel:open(ModData, Args),
+handle_call({jsonrpc, <<"open">>, RequestInfo, Args}, _From, State) ->
+    {ok, Oid} = rabbit_http_channel:open(Args),
     {reply,
-     {result, {obj, [{address, list_to_binary(mod_jsonrpc:service_address(ModData, Oid))}]}},
+     {result, {obj, [{service, Oid}]}},
      State}.
 
 handle_cast(Request, State) ->
