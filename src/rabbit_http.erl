@@ -85,7 +85,7 @@ jsonrpc_amqp_invoke(Name, Fun, ErrorTransformer) ->
 init(_Args) ->
     {ok, nostate}.
 
-handle_call({jsonrpc, <<"open">>, RequestInfo, Args}, _From, State) ->
+handle_call({jsonrpc, <<"open">>, _RequestInfo, Args}, _From, State) ->
     {ok, Oid} = rabbit_http_channel:open(Args),
     {reply,
      {result, {obj, [{service, Oid}]}},
