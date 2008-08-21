@@ -11,10 +11,15 @@ To run the server with the additional HTTP support,
   $ make run
 
 The Makefile defaults to searching for the RabbitMQ broker in
-../rabbitmq/erlang/rabbit, and the "../rabbitmq" part can be overridden by
-setting RABBIT_SOURCE_ROOT, like so:
+../rabbitmq-server, and this can be overridden by setting
+RABBIT_SERVER_SOURCE_ROOT, like so:
 
-  $ make RABBIT_SOURCE_ROOT=path/to/rabbitmq run
+  $ make RABBIT_SERVER_SOURCE_ROOT=path/to/rabbitmq-server run
+
+(If just the "../" part is wrong, you can try setting a different
+variable, RABBIT_SOURCE_ROOT, to the correct value instead. See the
+Makefile for the details of how RABBIT_SERVER_SOURCE_ROOT is
+constructed from RABBIT_SOURCE_ROOT.)
 
 The broker should start, and output a series of "starting ..."
 messages. A successful start looks like:
@@ -43,9 +48,9 @@ you will see:
   Crash dump was written to: erl_crash.dump
   init terminating in do_boot ()
 
-And finally, if the RABBIT_SOURCE_ROOT is wrong, or it is right but
-the code is not compiled or not on your erlang search path, you will
-see:
+And finally, if the RABBIT_SERVER_SOURCE_ROOT is wrong, or it is right
+but the code is not compiled or not on your erlang search path, you
+will see:
 
   erlc -I ../rabbitmq/erlang/rabbit/include -I include -o ebin -Wall +debug_info  src/rabbit_http_channel.erl
   src/rabbit_http_channel.erl:28: can't find include file "rabbit.hrl"
