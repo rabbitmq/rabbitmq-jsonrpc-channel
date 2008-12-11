@@ -32,6 +32,6 @@ run: all start_server
 start_server:
 	mkdir -p $(SERVER_ROOT)/logs
 	$(MAKE) -C $(RABBIT_SERVER_SOURCE_ROOT) run \
-		RABBIT_ARGS='-pa '"$$(pwd)/$(EBIN_DIR)"' -rabbit \
+		RABBITMQ_SERVER_START_ARGS='-pa '"$$(pwd)/$(EBIN_DIR)"' -rabbit \
 			rabbit_http_conf \"'"$$(pwd)"'/ebin/httpd.conf.tmp\" \
 			extra_startup_steps [{\"HTTP-JSON-listeners\",rabbit_http,kickstart,[]}]'

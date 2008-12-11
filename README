@@ -52,7 +52,7 @@ And finally, if the RABBIT_SERVER_SOURCE_ROOT is wrong, or it is right
 but the code is not compiled or not on your erlang search path, you
 will see:
 
-  erlc -I ../rabbitmq/erlang/rabbit/include -I include -o ebin -Wall +debug_info  src/rabbit_http_channel.erl
+  erlc -I ../rabbitmq-server/include -I include -o ebin -Wall +debug_info  src/rabbit_http_channel.erl
   src/rabbit_http_channel.erl:28: can't find include file "rabbit.hrl"
   src/rabbit_http_channel.erl:29: can't find include file "rabbit_framing.hrl"
   src/rabbit_http_channel.erl:133: record content undefined
@@ -87,18 +87,17 @@ at the time of writing is:
   {"installGenericProxy":{"name":"call","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"}]}}
   {"installGenericProxy":{"name":"cast","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"},{"name":"content","type":"str"},{"name":"props","type":"arr"}]}}
   handle_channel_ready
-  {"q2":"test-queue-1b"}
   {"q1":"test-queue-1a"}
+  {"q2":"test-queue-1b"}
   {"consumeOk":"aa-cons-tag1"}
-  {"delivery2":{"content":"hello, world, again! pub 2","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-1b","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":"something22","expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
-  {"delivery":{"content":"hello, world","delivery_tag":2,"redelivered":false,"exchange":"","routing_key":"test-queue-1a","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
+  {"delivery":{"content":"hello, world","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-1a","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
   {"cancelOk":"aa-cons-tag1"}
+  {"delivery2":{"content":"hello, world, again! pub 2","delivery_tag":2,"redelivered":false,"exchange":"","routing_key":"test-queue-1b","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":"something22","expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
   {"installGenericProxy":{"name":"poll","idempotent":false,"params":[]}}
   {"installGenericProxy":{"name":"close","idempotent":false,"params":[]}}
   {"installGenericProxy":{"name":"call","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"}]}}
   {"installGenericProxy":{"name":"cast","idempotent":false,"params":[{"name":"method","type":"str"},{"name":"args","type":"arr"},{"name":"content","type":"str"},{"name":"props","type":"arr"}]}}
   test basic.cancel compliance
-  {"access_request":101}
   queue declare OK
   {"delivery4":{"content":"One","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-4","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
   {"never existed":"this-never-existed"}
