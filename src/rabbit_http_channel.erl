@@ -100,11 +100,11 @@ release_waiters([From | Rest]) ->
     gen_server:reply(From, {result, []}),
     release_waiters(Rest).
 
-release_rpcs([]) ->
+release_rpcs(_Response, []) ->
     ok;
-release_rpcs([From | Rest]) ->
-    gen_server:reply(From, rfc4627_jsonrpc:error_response(504, "Closed", null)),
-    release_rpcs(Rest).
+release_rpcs(Response, [From | Rest]) ->
+    gen_server:reply(From, Response),
+    release_rpcs(Response, Rest).
 
 reset_waiting_state(State) ->
     State#state{ outbound = queue:new(),
@@ -219,6 +219,12 @@ check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
 						 {obj, [{"method", Method},
 							{"args", Args}]}),
 		  StateBad);
+	'channel.close' ->
+	    %% Forbid client-originated channel.close. We wrap
+	    %% channel.close in our own close method.
+	    reply(rfc4627_jsonrpc:error_response(405, "AMQP method not allowed",
+						 {obj, [{"method", Method}]}),
+		  StateBad);
 	MethodAtom ->
 	    noreply(cast(MethodAtom,
 			 Args,
@@ -226,6 +232,11 @@ check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
 			 default_param(Props, #'P_basic'{}),
 			 StateOk))
     end.
+
+atom_to_js(A) when is_atom(A) ->
+    list_to_binary(atom_to_list(A));
+atom_to_js(_) ->
+    null.
 
 %---------------------------------------------------------------------------
 
@@ -261,8 +272,10 @@ handle_call({jsonrpc, <<"close">>, _RequestInfo, []},
 			   waiting_rpcs = WaitingRpcs,
 			   waiting_polls = WaitingPolls}) ->
     rabbit_log:debug("HTTP Channel closing by request.~n"),
-    release_rpcs(queue:to_list(WaitingRpcs)),
+    release_rpcs(rfc4627_jsonrpc:error_response(504, "Closed", null), %%% FIXME: propagate from args?
+		 queue:to_list(WaitingRpcs)),
     release_waiters(WaitingPolls),
+    %%% FIXME: actually call channel.close
     {stop, normal, {result, queue:to_list(Outbound)}, reset_waiting_state(State)};
 handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
 	    State = #state{waiting_rpcs = WaitingRpcs}) ->
@@ -294,6 +307,28 @@ handle_info(timeout, State = #state{waiting_polls = []}) ->
 handle_info(timeout, State = #state{waiting_polls = Waiting}) ->
     release_waiters(Waiting),
     noreply(State#state{waiting_polls = []});
+handle_info(shutdown, State = #state{waiting_rpcs = WaitingRpcs}) ->
+    rabbit_log:debug("HTTP Channel writer shutdown requested.~n"),
+    %%% FIXME: clean out WaitingRpcs
+    noreply(State);
+handle_info({'EXIT', _ChPid, {amqp, CodeAtom, MethodAtom}},
+	    State = #state{waiting_rpcs = WaitingRpcs}) ->
+    %%% FIXME: should propagate channel.close out in outbound, too
+    release_rpcs(rfc4627_jsonrpc:error_response(500, "AMQP error",
+						{obj, [{code, atom_to_js(CodeAtom)},
+						       {method, atom_to_js(MethodAtom)}]}),
+		 queue:to_list(WaitingRpcs)),
+    {stop, normal, check_outbound(State)};
+handle_info({'EXIT', Pid, Reason}, State = #state{waiting_rpcs = WaitingRpcs}) ->
+    %%% FIXME: should propagate channel.close out in outbound, too
+    release_rpcs(rfc4627_jsonrpc:error_response(500, "Internal error",
+						{obj, [{pid,
+							lists:flatten(io_lib:format("~p", [Pid]))},
+						       {reason,
+							lists:flatten(io_lib:format("~p",
+										    [Reason]))}]}),
+		 queue:to_list(WaitingRpcs)),
+    {stop, normal, check_outbound(State)};
 handle_info(Info, State) ->
     error_logger:error_msg("Unhandled info in ~p: ~p", [?MODULE, Info]),
     noreply(State).
