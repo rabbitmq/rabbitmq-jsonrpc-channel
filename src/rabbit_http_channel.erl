@@ -37,6 +37,8 @@
 -export([open/1, start_link/2]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
 
+-define(CHANNELID, ?MODULE).
+
 open(Args) ->
     Oid = list_to_binary(rfc4627_jsonrpc:gen_object_name()),
     {ok, Pid} = supervisor:start_child(rabbit_http_channel_sup, [Oid, Args]),
@@ -252,7 +254,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 
     U = rabbit_access_control:user_pass_login(Username, Password),
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
-    ChPid = rabbit_channel:start_link(self(), self(), Username, VHostPath),
+    ChPid = rabbit_channel:start_link(?CHANNELID, self(), self(), Username, VHostPath),
 
     ok = rabbit_channel:do(ChPid, #'channel.open'{out_of_band = <<"">>}),
     {ok,
