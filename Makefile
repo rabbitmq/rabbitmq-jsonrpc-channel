@@ -4,6 +4,10 @@ RABBIT_SERVER_INCLUDE_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/include
 
 PLUGIN_NAME=rabbitmq-http2
 PLUGINS_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/plugins
+PLUGINS_LIB_DIR=$(PLUGINS_DIR)/lib
+
+HG_OPENSOURCE=http://hg.opensource.lshift.net
+JSON_LIB=erlang-rfc4627
 
 SOURCE_DIR=src
 EBIN_DIR=ebin
@@ -29,6 +33,10 @@ ebin/httpd.conf.tmp: server_root/conf/httpd.conf.in
 clean:
 	rm -f ebin/*.beam $(TARGETS)
 	rm -f $(SERVER_ROOT)/logs/*_log
+
+deps:
+	hg clone $(HG_OPENSOURCE)/$(JSON_LIB) $(PLUGINS_LIB_DIR)/$(JSON_LIB)
+	$(MAKE) -C $(PLUGINS_LIB_DIR)/$(JSON_LIB)
 
 package:
 	mkdir -p $(SERVER_ROOT)/logs
