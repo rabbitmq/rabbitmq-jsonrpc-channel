@@ -31,13 +31,24 @@
 -module(rabbit_http).
 -behaviour(gen_server).
 
--export([kickstart/0, start_link/0]).
+-export([start_plugin/1, stop_plugin/0]).
+-export([kickstart/1, start_link/0]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
 -export([jsonrpc_amqp_invoke/2, jsonrpc_amqp_invoke/3]).
 
-kickstart() ->
+
+start_plugin(Terms) ->
+    case lists:keysearch(rabbit_http_conf,1,Terms) of
+        {value, {_,HttpdConf}} ->
+            kickstart(HttpdConf);
+        _ ->
+            exit(bad_plugin_config)
+    end.
+
+stop_plugin() -> ok.
+
+kickstart(HttpdConf) ->
     rfc4627_jsonrpc:start(),
-    {ok, HttpdConf} = application:get_env(rabbit_http_conf),
     {ok, _} = httpd:start(HttpdConf),
     {ok, _} = supervisor:start_child(rabbit_sup,
 				     {?MODULE,

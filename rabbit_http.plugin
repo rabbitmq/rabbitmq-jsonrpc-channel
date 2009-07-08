@@ -1,0 +1,9 @@
+% This configures the HTTP adpater for rabbit
+% This is a static config file that provides the plugin
+% loading mechanism in Rabbit with the information
+% it requires to load the plugin, so basically if you
+% play around with this, you will break the plugin
+
+% Define the name of the plugin
+{plugin, rabbit_http}.
+
