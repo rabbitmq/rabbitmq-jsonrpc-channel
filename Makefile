@@ -2,6 +2,9 @@ RABBIT_SOURCE_ROOT=..
 RABBIT_SERVER_SOURCE_ROOT=$(RABBIT_SOURCE_ROOT)/rabbitmq-server
 RABBIT_SERVER_INCLUDE_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/include
 
+PLUGIN_NAME=rabbitmq-http2
+PLUGINS_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/plugins
+
 SOURCE_DIR=src
 EBIN_DIR=ebin
 INCLUDE_DIR=include
@@ -26,6 +29,15 @@ ebin/httpd.conf.tmp: server_root/conf/httpd.conf.in
 clean:
 	rm -f ebin/*.beam $(TARGETS)
 	rm -f $(SERVER_ROOT)/logs/*_log
+
+package:
+	mkdir -p $(SERVER_ROOT)/logs
+
+install: package
+	rm -f $(PLUGINS_DIR)/$(PLUGIN_NAME)
+	ln -s $(CURDIR) $(PLUGINS_DIR)/$(PLUGIN_NAME)
+
+
 
 run: all start_server
 
