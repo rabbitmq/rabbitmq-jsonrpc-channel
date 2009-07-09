@@ -2,9 +2,12 @@ RABBIT_SOURCE_ROOT=..
 RABBIT_SERVER_SOURCE_ROOT=$(RABBIT_SOURCE_ROOT)/rabbitmq-server
 RABBIT_SERVER_INCLUDE_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/include
 
-PLUGIN_NAME=rabbitmq-http2
+PLUGIN_NAME=rabbit_http
 PLUGINS_DIR=$(RABBIT_SERVER_SOURCE_ROOT)/plugins
 PLUGINS_LIB_DIR=$(PLUGINS_DIR)/lib
+
+ZIP_NAME=$(PLUGIN_NAME)
+EZ_NAME=$(ZIP_NAME).ez
 
 HG_OPENSOURCE=http://hg.opensource.lshift.net
 JSON_LIB=erlang-rfc4627
@@ -12,6 +15,7 @@ JSON_LIB=erlang-rfc4627
 SOURCE_DIR=src
 EBIN_DIR=ebin
 INCLUDE_DIR=include
+DIST_DIR=dist
 INCLUDES=$(wildcard $(INCLUDE_DIR)/*.hrl)
 SOURCES=$(wildcard $(SOURCE_DIR)/*.erl)
 TARGETS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam,$(SOURCES)) ebin/httpd.conf.tmp
@@ -41,10 +45,17 @@ deps:
 package:
 	mkdir -p $(SERVER_ROOT)/logs
 
-install: package
-	rm -f $(PLUGINS_DIR)/$(PLUGIN_NAME)
-	ln -s $(CURDIR) $(PLUGINS_DIR)/$(PLUGIN_NAME)
+distclean:
+	rm -rf $(DIST_DIR)
 
+dist: package
+	mkdir -p $(DIST_DIR)
+	mkdir -p $(DIST_DIR)/$(ZIP_NAME)
+	cp -r $(EBIN_DIR) *.cfg *.plugin $(SERVER_ROOT) $(DIST_DIR)/$(ZIP_NAME)
+	(cd dist; zip -r $(EZ_NAME) *)
+
+install: dist
+	cp $(DIST_DIR)/$(EZ_NAME) $(PLUGINS_DIR)
 
 
 run: all start_server
