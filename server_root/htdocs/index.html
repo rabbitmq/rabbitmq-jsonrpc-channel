@@ -15,4 +15,27 @@
       </ul>
     </div>
   </body>
+
+  <script type="text/javascript">
+      var X = function() {
+          this.a = 0;
+          incr = function () { this.a = this.a + 1; }
+          this.alertValue = function(msg) {
+            window.alert(msg + ": " + this.a);
+          };
+      }
+
+      a = new X();
+      b = new X();
+      a["incrB"] = function() { b.incr.apply(b) };
+
+//      a.incr();
+//      a.incr();
+      a.incrB();
+//      b.incr();
+//      a.incr();
+
+      a.alertValue("A");
+      b.alertValue("B");
+  </script>
 </html>
