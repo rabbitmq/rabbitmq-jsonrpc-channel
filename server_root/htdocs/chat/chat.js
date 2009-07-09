@@ -15,14 +15,14 @@ function mkSpan(cls, content) {
 
 var mimeTypeHandlers = {
     "text/plain": function(delivery) {
-	var utterance = mkElement("div", "utterance");
-	utterance.appendChild(mkSpan("nick", delivery.routing_key));
-	utterance.appendChild(mkSpan("message", delivery.content));
-	$("chatOutput").appendChild(utterance);
+        var utterance = mkElement("div", "utterance");
+        utterance.appendChild(mkSpan("nick", delivery.routing_key));
+        utterance.appendChild(mkSpan("message", delivery.content));
+        $("#chatOutput")[0].appendChild(utterance);
     },
 
     "application/json": function(delivery) {
-	var parsedMessage = JSON.parse(delivery.content);
+	    var parsedMessage = JSON.parse(delivery.content);
     }
 };
 
@@ -43,8 +43,8 @@ function initUsername() {
 function chatMain() {
     log("Starting.");
 
-    $("userName").value = initUsername();
-    $("chatMessage").focus();
+    $("#userName")[0].value = initUsername();
+    $("#chatMessage").focus();
 
     openRabbitChannel(function (c) {
 			  channel = c;
@@ -55,8 +55,8 @@ function chatMain() {
 }
 
 function change_channel() {
-    log("change_channel: " + $("channelName").value);
-    channel.exchangeDeclare($("channelName").value, "fanout")
+    log("change_channel: " + $("#channelName")[0].value);
+    channel.exchangeDeclare($("#channelName")[0].value, "fanout")
     .addCallback(on_exchange_declared);
 
     function on_exchange_declared() {
@@ -82,12 +82,12 @@ function change_channel() {
     function on_queue_declared(newQueueName) {
 	log("on_queue_declared");
 	queueName = newQueueName;
-	channel.queueBind(queueName, $("channelName").value).addCallback(on_queue_bound);
+	channel.queueBind(queueName, $("#channelName")[0].value).addCallback(on_queue_bound);
     }
 
     function on_queue_bound() {
 	log("on_queue_bound");
-	$("chatOutput").innerHTML = "";
+	$("#chatOutput").innerHTML = "";
 	channel.basicConsume(queueName,
 			     {
 				 deliver: function(delivery) {
@@ -108,20 +108,19 @@ function change_channel() {
 }
 
 function send_chat() {
-    channel.basicPublish($("channelName").value, $("userName").value,
-			 $("chatMessage").value,
+    channel.basicPublish($("#channelName")[0].value, $("#userName")[0].value,
+			 $("#chatMessage")[0].value,
 			 { content_type: "text/plain" });
-    $("chatMessage").value = "";
+    $("#chatMessage")[0].value = "";
 }
 
 function log() {
-    $A(arguments).each(function (arg) {
-			   if (typeof(arg) == 'string') {
-			       $("testOutput").appendChild(document.createTextNode(arg + "\n"));
-			   } else {
-			       $("testOutput").appendChild(document
-							   .createTextNode(JSON.stringify(arg) +
-									   "\n"));
-			   }
-		       });
+    for (var i = 0; i < arguments.length; ++i) {
+        var arg = arguments[i];
+        if (typeof(arg) == 'string') {
+            $("#testOutput").append(arg + "\n");
+        } else {
+            $("#testOutput").append(JSON.stringify(arg) + "\n");
+        }
+    }
 }

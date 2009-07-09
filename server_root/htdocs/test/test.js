@@ -118,13 +118,12 @@ function testMain() {
 }
 
 function log() {
-    $A(arguments).each(function (arg) {
-			   if (typeof(arg) == 'string') {
-			       $("testOutput").appendChild(document.createTextNode(arg + "\n"));
-			   } else {
-			       $("testOutput").appendChild(document
-							   .createTextNode(JSON.stringify(arg) +
-									   "\n"));
-			   }
-		       });
+    for (var i = 0; i < arguments.length; ++i) {
+        var arg = arguments[i];
+        if (typeof(arg) == 'string') {
+            $("#testOutput").append(arg + "\n");
+        } else {
+            $("#testOutput").append(JSON.stringify(arg) + "\n");
+        }
+    }
 }
