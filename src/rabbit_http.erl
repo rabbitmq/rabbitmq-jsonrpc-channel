@@ -30,12 +30,31 @@
 %%
 -module(rabbit_http).
 -behaviour(gen_server).
+-behaviour(application).
 
 -export([start_plugin/1, stop_plugin/0]).
 -export([kickstart/1, start_link/0]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
 -export([jsonrpc_amqp_invoke/2, jsonrpc_amqp_invoke/3]).
 
+-export([start/2, stop/1]).
+
+%%-----------------------------------------------------------
+%% OTP application callbacks
+
+start(_Type, _Args) ->
+    case application:get_env(rabbit_http_conf) of
+        {ok, HttpdConf} ->
+            kickstart(HttpdConf);
+        undefined ->
+            rabbit_log:error("Could not load rabbit_http_conf property~n"),
+            {error, config_not_found}
+    end.
+
+stop(_State) ->
+    ok.
+
+%%-----------------------------------------------------------
 
 start_plugin(Terms) ->
     case lists:keysearch(rabbit_http_conf,1,Terms) of
@@ -54,8 +73,7 @@ kickstart(HttpdConf) ->
 				     {?MODULE,
 				      {?MODULE, start_link, []},
 				      transient, 100, worker, [?MODULE]}),
-    {ok, _} = rabbit_http_channel_sup:start_link(),
-    ok.
+    rabbit_http_channel_sup:start_link().
 
 start_link() ->
     {ok, Pid} = gen_server:start_link(?MODULE, [], []),
