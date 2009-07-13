@@ -96,56 +96,74 @@ default_param(null, Default) ->
 default_param(X, _Default) ->
     X.
 
-release_waiters([]) ->
+release_many(_Response, []) ->
     ok;
-release_waiters([From | Rest]) ->
-    gen_server:reply(From, {result, []}),
-    release_waiters(Rest).
-
-release_rpcs(_Response, []) ->
-    ok;
-release_rpcs(Response, [From | Rest]) ->
+release_many(Response, [From | Rest]) ->
     gen_server:reply(From, Response),
-    release_rpcs(Response, Rest).
+    release_many(Response, Rest).
 
-reset_waiting_state(State) ->
-    State#state{ outbound = queue:new(),
-		 waiting_polls = [] }.
+release_waiters(Response, State = #state{ waiting_polls = Waiters }) ->
+    release_many(Response, Waiters),
+    State#state{ waiting_polls = [] }.
+
+pop_outbound(State = #state{ outbound = Outbound }) ->
+    case queue:to_list(Outbound) of
+        [] ->
+            {[], State};
+        OutboundList ->
+            {OutboundList, State#state{ outbound = queue:new() }}
+    end.
+
+empty_poll_result() ->
+    {result, []}.
+
+stop_poll_result() ->
+    {result, <<"stop">>}.
 
 check_outbound(State = #state{ waiting_polls = [] }) ->
     State;
-check_outbound(State = #state{ waiting_polls = [LuckyWaiter | Waiting], outbound = Outbound }) ->
-    OutboundList = queue:to_list(Outbound),
-    if
-        OutboundList == [] ->
+check_outbound(State0 = #state{ waiting_polls = [LuckyWaiter | Waiting] }) ->
+    case pop_outbound(State0) of
+        {[], State} ->
             State;
-        true ->
+        {OutboundList, State} ->
             gen_server:reply(LuckyWaiter, {result, OutboundList}),
-            release_waiters(Waiting),
-            reset_waiting_state(State)
+            release_waiters(empty_poll_result(), State#state{ waiting_polls = Waiting })
     end.
 
-do_send_command(Method, Args, State = #state{waiting_rpcs = WaitingRpcs}) ->
+final_cleanup(RpcResponse, State0) ->
+    State = #state{ waiting_rpcs = WaitingRpcs } =
+        release_waiters(stop_poll_result(), check_outbound(State0)),
+    release_many(RpcResponse, queue:to_list(WaitingRpcs)),
+    State#state{ waiting_rpcs = queue:new() }.
+
+method_result(Command) ->
+    method_result(Command, []).
+
+method_result(Command, ExtraFields) ->
+    [Method | Args] = tuple_to_list(Command),
+    {obj, [{"method", list_to_binary(atom_to_list(Method))},
+           {"args", Args}
+           | ExtraFields]}.
+
+do_send_command(Command, State = #state{waiting_rpcs = WaitingRpcs}) ->
     case queue:out(WaitingRpcs) of
 	{{value, From}, WaitingRpcsTail} ->
-	    gen_server:reply(From, {result, {obj, [{"method", list_to_binary(atom_to_list(Method))},
-						   {"args", Args}]}}),
+	    gen_server:reply(From, {result, method_result(Command)}),
 	    State#state{waiting_rpcs = WaitingRpcsTail};
 	{empty, _} ->
-	    rabbit_log:error("Unsolicited RPC reply: ~p~n", [[Method | Args]]),
+	    rabbit_log:error("Unsolicited RPC reply: ~p~n", [Command]),
 	    State
     end.
 
-do_send_async(Method,
-	      Args,
+do_send_async(Command,
 	      #content{properties = Props,
 		       payload_fragments_rev = BodyFragmentsRev},
 	      State = #state{outbound = Outbound}) ->
     ['P_basic' | PropValues] = tuple_to_list(Props),
-    Result = {obj, [{"method", list_to_binary(atom_to_list(Method))},
-		    {"args", Args},
-		    {"content", list_to_binary(lists:reverse(BodyFragmentsRev))},
-		    {"props", amqp_to_js(PropValues)}]},
+    Result = method_result(Command,
+                           [{"content", list_to_binary(lists:reverse(BodyFragmentsRev))},
+                            {"props", amqp_to_js(PropValues)}]),
     check_outbound(State#state{outbound = queue:in(Result, Outbound)}).
 
 enqueue_waiter(From, State = #state{ waiting_polls = Waiting }) ->
@@ -235,11 +253,6 @@ check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
 			 StateOk))
     end.
 
-atom_to_js(A) when is_atom(A) ->
-    list_to_binary(atom_to_list(A));
-atom_to_js(_) ->
-    null.
-
 %---------------------------------------------------------------------------
 
 init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
@@ -258,27 +271,24 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 
     ok = rabbit_channel:do(ChPid, #'channel.open'{out_of_band = <<"">>}),
     {ok,
-     reset_waiting_state(#state{channel = ChPid,
-				oid = Oid,
-				vhost = VHostPath,
-				timeout_millisec = SessionTimeoutMs,
-				state = opening,
-				waiting_rpcs = queue:new()}),
+     #state{channel = ChPid,
+            oid = Oid,
+            vhost = VHostPath,
+            timeout_millisec = SessionTimeoutMs,
+            state = opening,
+            waiting_rpcs = queue:new(),
+            waiting_polls = [],
+            outbound = queue:new()},
      SessionTimeoutMs}.
 
 handle_call({jsonrpc, <<"poll">>, _RequestInfo, []}, From, State) ->
     noreply(enqueue_waiter(From, State));
-handle_call({jsonrpc, <<"close">>, _RequestInfo, []},
-	    _From,
-	    State = #state{outbound = Outbound,
-			   waiting_rpcs = WaitingRpcs,
-			   waiting_polls = WaitingPolls}) ->
+handle_call({jsonrpc, <<"close">>, _RequestInfo, []}, _From, State0) ->
+    %%% FIXME: somehow propagate some of the args into the close reason given to other callers?
+    %%% FIXME: actually call channel.close?
     rabbit_log:debug("HTTP Channel closing by request.~n"),
-    release_rpcs(rfc4627_jsonrpc:error_response(504, "Closed", null), %%% FIXME: propagate from args?
-		 queue:to_list(WaitingRpcs)),
-    release_waiters(WaitingPolls),
-    %%% FIXME: actually call channel.close
-    {stop, normal, {result, queue:to_list(Outbound)}, reset_waiting_state(State)};
+    {OutboundList, State} = pop_outbound(State0),
+    {stop, normal, {result, OutboundList}, State};
 handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
 	    State = #state{waiting_rpcs = WaitingRpcs}) ->
     check_cast(Method, Args, none, #'P_basic'{}, State, State#state{waiting_rpcs =
@@ -297,45 +307,39 @@ handle_cast(Request, State) ->
 handle_info({send_command, #'channel.open_ok'{}}, State = #state{state = opening}) ->
     noreply(State#state{state = ready});
 handle_info({send_command, Command}, State) ->
-    [Method | Args] = tuple_to_list(Command),
-    noreply(do_send_command(Method, Args, State));
+    noreply(do_send_command(Command, State));
 handle_info({send_command_and_notify, QPid, TxPid, Command, Content}, State) ->
     rabbit_amqqueue:notify_sent(QPid, TxPid),
-    [Method | Args] = tuple_to_list(Command),
-    noreply(do_send_async(Method, Args, Content, State));
+    noreply(do_send_async(Command, Content, State));
+
 handle_info(timeout, State = #state{waiting_polls = []}) ->
     rabbit_log:debug("HTTP Channel timed out, closing.~n"),
     {stop, normal, State};
-handle_info(timeout, State = #state{waiting_polls = Waiting}) ->
-    release_waiters(Waiting),
-    noreply(State#state{waiting_polls = []});
-handle_info(shutdown, State = #state{waiting_rpcs = WaitingRpcs}) ->
+handle_info(timeout, State) ->
+    noreply(release_waiters(empty_poll_result(), State));
+
+handle_info(shutdown, State) ->
     rabbit_log:debug("HTTP Channel writer shutdown requested.~n"),
-    %%% FIXME: clean out WaitingRpcs
+    %% We're going to close pretty soon anyway. No special action needed here.
     noreply(State);
-handle_info({'EXIT', _ChPid, {amqp, CodeAtom, MethodAtom}},
-	    State = #state{waiting_rpcs = WaitingRpcs}) ->
-    %%% FIXME: should propagate channel.close out in outbound, too
-    release_rpcs(rfc4627_jsonrpc:error_response(500, "AMQP error",
-						{obj, [{code, atom_to_js(CodeAtom)},
-						       {method, atom_to_js(MethodAtom)}]}),
-		 queue:to_list(WaitingRpcs)),
-    {stop, normal, check_outbound(State)};
-handle_info({'EXIT', Pid, Reason}, State = #state{waiting_rpcs = WaitingRpcs}) ->
-    %%% FIXME: should propagate channel.close out in outbound, too
-    release_rpcs(rfc4627_jsonrpc:error_response(500, "Internal error",
-						{obj, [{pid,
-							lists:flatten(io_lib:format("~p", [Pid]))},
-						       {reason,
-							lists:flatten(io_lib:format("~p",
-										    [Reason]))}]}),
-		 queue:to_list(WaitingRpcs)),
-    {stop, normal, check_outbound(State)};
+
+handle_info({channel_exit, _ChannelId, {amqp, CodeAtom, Explanation, MethodName}}, State) ->
+    Detail = {obj, [{code, list_to_binary(atom_to_list(CodeAtom))},
+                    {text, list_to_binary(Explanation)},
+                    {method, list_to_binary(atom_to_list(MethodName))}]},
+    {stop, normal, final_cleanup(rfc4627_jsonrpc:error_response(500, "AMQP error", Detail),
+                                 State)};
+handle_info({'EXIT', Pid, Reason}, State) ->
+    Detail = {obj, [{pid, list_to_binary(io_lib:format("~p", [Pid]))},
+                    {reason, list_to_binary(io_lib:format("~p", [Reason]))}]},
+    {stop, normal, final_cleanup(rfc4627_jsonrpc:error_response(500, "Internal error", Detail),
+                                 State)};
 handle_info(Info, State) ->
     error_logger:error_msg("Unhandled info in ~p: ~p", [?MODULE, Info]),
     noreply(State).
 
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+    _State1 = final_cleanup(rfc4627_jsonrpc:error_response(504, "Closed", null), State),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->

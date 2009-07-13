@@ -295,7 +295,11 @@ Object.extend(RabbitChannel.prototype,
     },
 
     handlePollResult: function(result) {
-        result.each(this.handleAsyncMessage.bind(this));
+	if (result === "stop") {
+	    this.alive = false;
+	} else {
+            result.each(this.handleAsyncMessage.bind(this));
+	}
     },
 
     handleAsyncMessage: function (message) {
