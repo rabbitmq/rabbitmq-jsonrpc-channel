@@ -33,7 +33,6 @@
 
 -export([kickstart/0, start_link/0]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
--export([jsonrpc_amqp_invoke/2, jsonrpc_amqp_invoke/3]).
 
 kickstart() ->
     rfc4627_jsonrpc:start(),
@@ -57,32 +56,6 @@ start_link() ->
 						     {"virtualHost", str}]}]),
     rfc4627_jsonrpc:register_service(Pid, Service),
     {ok, Pid}.
-
-jsonrpc_amqp_invoke(Name, Fun) ->
-    jsonrpc_amqp_invoke(Name, Fun, fun (X) -> X end).
-
-jsonrpc_amqp_invoke(Name, Fun, ErrorTransformer) ->
-    case catch Fun() of
-        {'EXIT', Reason = {amqp, _, _}} ->
-            {_ShouldClose, Code, TextBin, Method} = rabbit_reader:lookup_amqp_exception(Reason),
-            ErrorJson = {obj, [{"procedure", Name},
-                               {"detail", case Method of
-                                              none -> null;
-                                              M when is_binary(M) -> M;
-                                              M when is_list(M) -> list_to_binary(M);
-                                              M when is_atom(M) -> list_to_binary(atom_to_list(M))
-					  end}]},
-            ErrorTransformer(rfc4627_jsonrpc:error_response(Code, TextBin, ErrorJson));
-        {'EXIT', Reason} ->
-            ErrorTransformer
-              (rfc4627_jsonrpc:error_response(
-                 500,
-                 list_to_binary(lists:flatten(
-                                  io_lib:format("~p: ~p",[Name, Reason]))),
-                 null));
-        Result ->
-            Result
-    end.
 
 %% -----------------------------------------------------------------------------
 %% gen_server callbacks
