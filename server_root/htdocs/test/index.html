@@ -1,7 +1,7 @@
 <html>
   <head>
     <title>RabbitMQ JSON-RPC test</title>
-    <script type="text/javascript" src="../prototype-1.4.0.js"></script>
+    <script type="text/javascript" src="../jquery-1.3.2.min.js"></script>
     <script type="text/javascript" src="../json.js"></script>
     <script type="text/javascript" src="../jsonrpc.js"></script>
     <script type="text/javascript" src="../rabbitmq.js"></script>
@@ -15,6 +15,6 @@
       <h2>RabbitMQ JSON-RPC simple tests</h2>
       <pre id="testOutput"></pre>
     </div>
-    <script>Event.observe(window, 'load', testMain);</script>    
+    <script>jQuery(window).bind('load', function() { try { testMain() } catch (e) { console.log(e); } });</script>
   </body>
 </html>

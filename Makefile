@@ -57,9 +57,18 @@ $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www: $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)
 
 package: clean $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www $(TARGETS)
 	cp -r $(EBIN_DIR) $(DIST_DIR)/$(PACKAGE)
+	cp -r $(DOC_ROOT)/*.js $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www
+	cp -r $(DOC_ROOT)/img $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www
+	(cd $(DIST_DIR); zip -r $(PACKAGE_NAME) $(PACKAGE))
+
+package_test: clean $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www $(TARGETS)
+	cp -r $(EBIN_DIR) $(DIST_DIR)/$(PACKAGE)
 	cp -r $(DOC_ROOT)/* $(DIST_DIR)/$(PACKAGE)/$(PRIV_DIR)/www
 	(cd $(DIST_DIR); zip -r $(PACKAGE_NAME) $(PACKAGE))
 
 install: package
+	cp $(DIST_DIR)/$(PACKAGE_NAME) $(RABBIT_SERVER_PLUGINS_DIR)
+
+install_test: package_test
 	cp $(DIST_DIR)/$(PACKAGE_NAME) $(RABBIT_SERVER_PLUGINS_DIR)
 
