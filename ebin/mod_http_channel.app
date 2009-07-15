@@ -10,6 +10,7 @@
   {registered, []},
   {mod, {mod_http_channel, []}},
   {env, [
+        {default_vhost, <<"/">>},
         {docroot, "priv/www"},
         {port, 8000}
         ]},

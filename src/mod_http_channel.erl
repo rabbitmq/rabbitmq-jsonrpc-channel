@@ -14,6 +14,7 @@ start(_Type, _StartArgs) ->
 						     {"sessionTimeout", num},
 						     {"virtualHost", str}]}]),
     rfc4627_jsonrpc:register_service(Pid, Service),
+    {ok, _} = rabbit_http_channel_sup:start_link(),
     {ok, Pid}.
 
 stop(_State) ->
