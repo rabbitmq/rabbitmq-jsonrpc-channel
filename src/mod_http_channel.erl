@@ -4,7 +4,7 @@
 -export([start/2,stop/1]).
 
 start(_Type, _StartArgs) ->
-    mod_http_web:install_static(?MODULE),
+    mod_http_web:register_docroot("mod_http_channel", ?MODULE, "priv/www"),
     {ok, Pid} = gen_server:start_link(rabbit_http, [], []),
     Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
 				      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
