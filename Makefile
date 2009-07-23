@@ -14,7 +14,7 @@ TARGETS=$(patsubst $(SOURCE_DIR)/%.erl, $(EBIN_DIR)/%.beam,$(SOURCES)) ebin/http
 ERLC_OPTS=-I $(RABBIT_SERVER_INCLUDE_DIR) -I $(INCLUDE_DIR) -o $(EBIN_DIR) -Wall +debug_info # +native -v
 
 SERVER_ROOT=$(CURDIR)/server_root
-DOC_ROOT=$(SERVER_ROOT)/htdocs
+DOC_ROOT=priv/www
 PACKAGE=mod_http_channel
 PACKAGE_NAME=$(PACKAGE).ez
 
