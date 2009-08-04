@@ -53,7 +53,7 @@ init(_Args) ->
     {ok, nostate}.
 
 handle_call({jsonrpc, <<"open">>, _RequestInfo, Args}, _From, State) ->
-    {ok, Oid} = rabbit_http_channel:open(Args),
+    {ok, Oid} = rabbit_jsonrpc_channel:open(Args),
     {reply,
      {result, {obj, [{service, Oid}]}},
      State}.

@@ -9,8 +9,6 @@
   {registered, []},
   {mod, {rabbit_jsonrpc_channel_app, []}},
   {env, [
-        {default_vhost, <<"/">>},
-        {docroot, "priv/www"},
-        {port, 8000}
+        {default_vhost, <<"/">>}
         ]},
   {applications, [kernel, stdlib, rfc4627_jsonrpc]}]}.
