@@ -28,7 +28,7 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http_channel).
+-module(rabbit_jsonrpc_channel).
 -behaviour(gen_server).
 
 -include("rabbit.hrl").
@@ -41,7 +41,7 @@
 
 open(Args) ->
     Oid = list_to_binary(rfc4627_jsonrpc:gen_object_name()),
-    {ok, Pid} = supervisor:start_child(rabbit_http_channel_sup, [Oid, Args]),
+    {ok, Pid} = supervisor:start_child(rabbit_jsonrpc_channel_sup, [Oid, Args]),
     Service = rfc4627_jsonrpc:service(Oid,
 				      <<"urn:uuid:b3f82f69-4f63-424b-8dbb-4fa53f63cf06">>,
 				      <<"1.2">>,

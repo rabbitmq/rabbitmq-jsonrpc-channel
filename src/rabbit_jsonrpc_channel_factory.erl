@@ -28,22 +28,11 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http).
+-module(rabbit_jsonrpc_channel_factory).
 -behaviour(gen_server).
 
--export([kickstart/0, start_link/0]).
+-export([start_link/0]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
-
-kickstart() ->
-    rfc4627_jsonrpc:start(),
-    {ok, HttpdConf} = application:get_env(rabbit_http_conf),
-    {ok, _} = inets:start(HttpdConf),
-    {ok, _} = supervisor:start_child(rabbit_sup,
-				     {?MODULE,
-				      {?MODULE, start_link, []},
-				      transient, 100, worker, [?MODULE]}),
-    {ok, _} = rabbit_http_channel_sup:start_link(),
-    ok.
 
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
