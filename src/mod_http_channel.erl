@@ -4,18 +4,17 @@
 -export([start/2,stop/1]).
 
 start(_Type, _StartArgs) ->
-    mod_http_web:register_docroot("mod_http_channel", ?MODULE, "priv/www"),
-    {ok, Pid} = gen_server:start_link(rabbit_http, [], []),
-    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
-				      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
-				      <<"1.2">>,
-				      [{<<"open">>, [{"username", str},
-						     {"password", str},
-						     {"sessionTimeout", num},
-						     {"virtualHost", str}]}]),
-    rfc4627_jsonrpc:register_service(Pid, Service),
-    {ok, _} = rabbit_http_channel_sup:start_link(),
-    {ok, Pid}.
+    mod_http:register_static_context("mod_http_channel", ?MODULE, "priv/www"),
+    mod_http:register_context_handler("rpc",
+                                      fun(Req) ->
+                                        case rfc4627_jsonrpc_mochiweb:handle("/rpc", Req) of
+                                          no_match ->
+                                            Req:not_found();
+                                          {ok, Response} ->
+                                            Req:respond(Response)
+                                        end
+                                      end),
+    rabbit_http_sup:start_link().
 
 stop(_State) ->
     ok.

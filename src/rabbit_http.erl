@@ -37,7 +37,7 @@
 kickstart() ->
     rfc4627_jsonrpc:start(),
     {ok, HttpdConf} = application:get_env(rabbit_http_conf),
-    {ok, _} = httpd:start(HttpdConf),
+    {ok, _} = inets:start(HttpdConf),
     {ok, _} = supervisor:start_child(rabbit_sup,
 				     {?MODULE,
 				      {?MODULE, start_link, []},
@@ -46,22 +46,21 @@ kickstart() ->
     ok.
 
 start_link() ->
-    {ok, Pid} = gen_server:start_link(?MODULE, [], []),
-    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
-				      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
-				      <<"1.2">>,
-				      [{<<"open">>, [{"username", str},
-						     {"password", str},
-						     {"sessionTimeout", num},
-						     {"virtualHost", str}]}]),
-    rfc4627_jsonrpc:register_service(Pid, Service),
-    {ok, Pid}.
+    gen_server:start_link(?MODULE, [], []).
 
 %% -----------------------------------------------------------------------------
 %% gen_server callbacks
 %% -----------------------------------------------------------------------------
 
 init(_Args) ->
+    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
+                                      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
+                                      <<"1.2">>,
+                                      [{<<"open">>, [{"username", str},
+                                                     {"password", str},
+                                                     {"sessionTimeout", num},
+                                                     {"virtualHost", str}]}]),
+    rfc4627_jsonrpc:register_service(self(), Service),
     {ok, nostate}.
 
 handle_call({jsonrpc, <<"open">>, _RequestInfo, Args}, _From, State) ->
