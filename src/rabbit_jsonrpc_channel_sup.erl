@@ -28,7 +28,7 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http_channel_sup).
+-module(rabbit_jsonrpc_channel_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).
@@ -41,5 +41,5 @@ start_link() ->
 
 init([]) ->
     {ok, {{simple_one_for_one, 10, 10},
-          [{rabbit_http_channel, {rabbit_http_channel, start_link, []},
-            temporary, brutal_kill, worker, [rabbit_http_channel]}]}}.
+          [{rabbit_jsonrpc_channel, {rabbit_jsonrpc_channel, start_link, []},
+            temporary, brutal_kill, worker, [rabbit_jsonrpc_channel]}]}}.

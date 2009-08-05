@@ -28,7 +28,7 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http_sup).
+-module(rabbit_jsonrpc_channel_app_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).
@@ -40,9 +40,11 @@ start_link() ->
     {ok, _Pid} = supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
-    RabbitHttp = {rabbit_http, {rabbit_http, start_link, []},
-                  permanent, 10000, worker, [rabbit_http]},
-    ChannelSup = {rabbit_http_channel_sup, {rabbit_http_channel_sup, start_link, []},
-                  permanent, 10000, supervisor, [rabbit_http_channel_sup]},
+    ChannelFactory = {rabbit_jsonrpc_channel_factory, 
+                      {rabbit_jsonrpc_channel_factory, start_link, []},
+                      permanent, 10000, worker, [rabbit_jsonrpc_channel_factory]},
+    ChannelSup = {rabbit_jsonrpc_channel_sup, 
+                  {rabbit_jsonrpc_channel_sup, start_link, []},
+                  permanent, 10000, supervisor, [rabbit_jsonrpc_channel_sup]},
 
-    {ok, {{one_for_one, 10, 10}, [ChannelSup, RabbitHttp]}}.
+    {ok, {{one_for_one, 10, 10}, [ChannelSup, ChannelFactory]}}.
