@@ -232,7 +232,7 @@ cast(MethodAtom, Args, Content, Props, State = #state{ channel = ChPid }) ->
 			   build_content(Content, Props)),
     State.
 
-check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
+check_cast(Method, Args, Content, Props, StateBad, StateOk, K) ->
     case catch list_to_existing_atom(binary_to_list(Method)) of
 	{'EXIT', {badarg, _}} ->
 	    reply(rfc4627_jsonrpc:error_response(404, "AMQP method not found",
@@ -246,11 +246,11 @@ check_cast(Method, Args, Content, Props, StateBad, StateOk) ->
 						 {obj, [{"method", Method}]}),
 		  StateBad);
 	MethodAtom ->
-	    noreply(cast(MethodAtom,
-			 Args,
-			 default_param(Content, none),
-			 default_param(Props, #'P_basic'{}),
-			 StateOk))
+	    K(cast(MethodAtom,
+                   Args,
+                   default_param(Content, none),
+                   default_param(Props, #'P_basic'{}),
+                   StateOk))
     end.
 
 %---------------------------------------------------------------------------
@@ -293,9 +293,11 @@ handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
 	    State = #state{waiting_rpcs = WaitingRpcs}) ->
     check_cast(Method, Args, none, #'P_basic'{}, State, State#state{waiting_rpcs =
 								    queue:in(From,
-									     WaitingRpcs)});
-handle_call({jsonrpc, <<"cast">>, _RequestInfo, [Method, Args, Content, Props]}, From, State) ->
-    check_cast(Method, Args, Content, Props, State, enqueue_waiter(From, State));
+									     WaitingRpcs)},
+               fun noreply/1);
+handle_call({jsonrpc, <<"cast">>, _RequestInfo, [Method, Args, Content, Props]}, _From, State) ->
+    check_cast(Method, Args, Content, Props, State, State,
+               fun (State1) -> reply({result, []}, State1) end);
 handle_call(Request, _From, State) ->
     error_logger:error_msg("Unhandled call in ~p: ~p", [?MODULE, Request]),
     reply({result, not_supported}, State).
