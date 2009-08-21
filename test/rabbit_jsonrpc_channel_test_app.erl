@@ -4,7 +4,8 @@
 -export([start/2,stop/1]).
 
 start(_Type, _StartArgs) ->
-    rabbit_mochiweb:register_static_context("examples", ?MODULE, "priv/www-examples"),
+    Handler = rabbit_mochiweb:static_context_handler("", ?MODULE, "priv/www-examples"),
+    ok = rabbit_mochiweb:register_global_handler(Handler),
     {ok, spawn(fun loop/0)}.
 
 stop(_State) ->
