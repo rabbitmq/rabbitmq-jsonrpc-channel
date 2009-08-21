@@ -102,8 +102,7 @@ Object.extend(RabbitChannel.prototype,
 
     _cast: function(method, args, content, props) {
 	if (this.alive) {
-	    this.service.cast(method, args, content, props)
-	    .addCallback(this.handlePollResult.bind(this));
+	    this.service.cast(method, args, content, props);
 	}
     },
 
