@@ -28,11 +28,11 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http_channel).
+-module(rabbit_jsonrpc_channel).
 -behaviour(gen_server).
 
--include("rabbit.hrl").
--include("rabbit_framing.hrl").
+-include_lib("rabbit_common/include/rabbit.hrl").
+-include_lib("rabbit_common/include/rabbit_framing.hrl").
 
 -export([open/1, start_link/2]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
@@ -41,7 +41,7 @@
 
 open(Args) ->
     Oid = list_to_binary(rfc4627_jsonrpc:gen_object_name()),
-    {ok, Pid} = supervisor:start_child(rabbit_http_channel_sup, [Oid, Args]),
+    {ok, Pid} = supervisor:start_child(rabbit_jsonrpc_channel_sup, [Oid, Args]),
     Service = rfc4627_jsonrpc:service(Oid,
 				      <<"urn:uuid:b3f82f69-4f63-424b-8dbb-4fa53f63cf06">>,
 				      <<"1.2">>,
