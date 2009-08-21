@@ -1,2 +1,4 @@
 \.beam$
 ^tmp
+^build/
+^dist/
