@@ -325,7 +325,10 @@ handle_info(shutdown, State) ->
     %% We're going to close pretty soon anyway. No special action needed here.
     noreply(State);
 
-handle_info({channel_exit, _ChannelId, {amqp, CodeAtom, Explanation, MethodName}}, State) ->
+handle_info({channel_exit, _ChannelId, #amqp_error{name = CodeAtom,
+                                                   expl = Explanation,
+                                                   method = MethodName}},
+            State) ->
     Detail = {obj, [{code, list_to_binary(atom_to_list(CodeAtom))},
                     {text, list_to_binary(Explanation)},
                     {method, list_to_binary(atom_to_list(MethodName))}]},
