@@ -325,8 +325,11 @@ handle_info(shutdown, State) ->
     %% We're going to close pretty soon anyway. No special action needed here.
     noreply(State);
 
-handle_info({channel_exit, _ChannelId, {amqp, CodeAtom, Explanation, MethodName}}, State) ->
-    Detail = {obj, [{code, list_to_binary(atom_to_list(CodeAtom))},
+handle_info({channel_exit, _ChannelId, #amqp_error{name = ErrorName,
+                                                   explanation = Explanation,
+                                                   method = MethodName}},
+            State) ->
+    Detail = {obj, [{code, list_to_binary(atom_to_list(ErrorName))},
                     {text, list_to_binary(Explanation)},
                     {method, list_to_binary(atom_to_list(MethodName))}]},
     {stop, normal, final_cleanup(rfc4627_jsonrpc:error_response(500, "AMQP error", Detail),
