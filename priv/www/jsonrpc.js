@@ -63,7 +63,7 @@ function JsonRpc_ModuleFactory(Support) {
 	    var that = this;
 	    this.request = Support.ajaxPost(this.serviceUrl,
 					    this.options.timeout
-					      ? {'X-JSON-RPC-Timeout': this.options.timeour}
+					      ? {'X-JSON-RPC-Timeout': this.options.timeout}
 					      : {},
 					    JSON.stringify(this.buildRequest()),
 					    function (ajaxRequest) {
