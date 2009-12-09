@@ -1,19 +1,19 @@
 function testMain() {
     log("test_main");
 
-    var channelFactory = new JsonRpcService("/rpc/rabbitmq", handle_service_ready,
-					    {debug: true,
-					     debugLogger: log,
-					     timeout: 30000});
+    var channelFactory = new JsonRpc.Service("/rpc/rabbitmq", handle_service_ready,
+					     {debug: true,
+					      debugLogger: log,
+					      timeout: 30000});
     var channel;
 
     // service gateway ready
     function handle_service_ready() {
         log("open");
-	channel = new RabbitChannel(channelFactory, handle_channel_ready,
-				    { debug: true,
-				      debugLogger: log,
-				      channelTimeout: 5 });
+	channel = new RabbitMQ.Channel(channelFactory, handle_channel_ready,
+				       { debug: true,
+					 debugLogger: log,
+					 channelTimeout: 5 });
      }
 
     function handle_channel_ready() {
@@ -77,10 +77,10 @@ function testMain() {
 
     function reopen() {
         channel.close();
-        channel = new RabbitChannel(channelFactory, test_cancel,
-				    { debug: true,
-				      debugLogger: log,
-				      channelTimeout: 6 });
+        channel = new RabbitMQ.Channel(channelFactory, test_cancel,
+				       { debug: true,
+					 debugLogger: log,
+					 channelTimeout: 6 });
     }
 
     function test_cancel(channel) {
@@ -118,13 +118,16 @@ function testMain() {
 }
 
 function log() {
-    $A(arguments).each(function (arg) {
-			   if (typeof(arg) == 'string') {
-			       $("testOutput").appendChild(document.createTextNode(arg + "\n"));
-			   } else {
-			       $("testOutput").appendChild(document
-							   .createTextNode(JSON.stringify(arg) +
-									   "\n"));
-			   }
-		       });
+    $.each(arguments,
+	   function (i, arg) {
+	       if (typeof(arg) == 'string') {
+		   $("#testOutput")[0].appendChild(document.createTextNode(arg + "\n"));
+	       } else {
+		   $("#testOutput")[0].appendChild(document
+						   .createTextNode(JSON.stringify(arg) +
+								   "\n"));
+	       }
+	   });
 }
+
+$(document).ready(testMain);
