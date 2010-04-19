@@ -269,7 +269,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
     ChPid = rabbit_channel:start_link(?CHANNELID, self(), self(), Username, VHostPath),
 
-    ok = rabbit_channel:do(ChPid, #'channel.open'{out_of_band = <<"">>}),
+    ok = rabbit_channel:do(ChPid, #'channel.open'{}),
     {ok,
      #state{channel = ChPid,
             oid = Oid,
