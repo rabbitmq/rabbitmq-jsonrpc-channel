@@ -62,6 +62,7 @@ start_link(Oid, Args) ->
 %---------------------------------------------------------------------------
 
 -record(state, {channel,
+                collector,
 		oid,
 		vhost,
 		realm,
@@ -130,6 +131,12 @@ check_outbound(State0 = #state{ waiting_polls = [LuckyWaiter | Waiting] }) ->
             gen_server:reply(LuckyWaiter, {result, OutboundList}),
             release_waiters(empty_poll_result(), State#state{ waiting_polls = Waiting })
     end.
+
+release_collector(State = #state{ collector = none }) ->
+    State;
+release_collector(State = #state{ collector = CollectorPid }) ->
+    ok = rabbit_reader_queue_collector:delete_all(CollectorPid),
+    State#state{ collector = none }.
 
 final_cleanup(RpcResponse, State0) ->
     State = #state{ waiting_rpcs = WaitingRpcs } =
@@ -267,11 +274,14 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 
     U = rabbit_access_control:user_pass_login(Username, Password),
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
-    ChPid = rabbit_channel:start_link(?CHANNELID, self(), self(), Username, VHostPath),
+    {ok, CollectorPid} = rabbit_reader_queue_collector:start_link(),
+    ChPid = rabbit_channel:start_link(?CHANNELID, self(), self(), Username, VHostPath,
+                                      CollectorPid),
 
     ok = rabbit_channel:do(ChPid, #'channel.open'{}),
     {ok,
      #state{channel = ChPid,
+            collector = CollectorPid,
             oid = Oid,
             vhost = VHostPath,
             timeout_millisec = SessionTimeoutMs,
@@ -288,7 +298,7 @@ handle_call({jsonrpc, <<"close">>, _RequestInfo, []}, _From, State0) ->
     %%% FIXME: actually call channel.close?
     rabbit_log:debug("HTTP Channel closing by request.~n"),
     {OutboundList, State} = pop_outbound(State0),
-    {stop, normal, {result, OutboundList}, State};
+    {stop, normal, {result, OutboundList}, release_collector(State)};
 handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
 	    State = #state{waiting_rpcs = WaitingRpcs}) ->
     check_cast(Method, Args, none, #'P_basic'{}, State, State#state{waiting_rpcs =
@@ -344,7 +354,8 @@ handle_info(Info, State) ->
     noreply(State).
 
 terminate(_Reason, State) ->
-    _State1 = final_cleanup(rfc4627_jsonrpc:error_response(504, "Closed", null), State),
+    _State1 = final_cleanup(rfc4627_jsonrpc:error_response(504, "Closed", null),
+                            release_collector(State)),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
