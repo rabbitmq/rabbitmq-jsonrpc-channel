@@ -135,7 +135,7 @@ check_outbound(State0 = #state{ waiting_polls = [LuckyWaiter | Waiting] }) ->
 release_collector(State = #state{ collector = none }) ->
     State;
 release_collector(State = #state{ collector = CollectorPid }) ->
-    ok = rabbit_reader_queue_collector:delete_all(CollectorPid),
+    ok = rabbit_queue_collector:delete_all(CollectorPid),
     State#state{ collector = none }.
 
 final_cleanup(RpcResponse, State0) ->
@@ -274,7 +274,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
 
     U = rabbit_access_control:user_pass_login(Username, Password),
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
-    {ok, CollectorPid} = rabbit_reader_queue_collector:start_link(),
+    {ok, CollectorPid} = rabbit_queue_collector:start_link(),
     ChPid = rabbit_channel:start_link(?CHANNELID, self(), self(), Username, VHostPath,
                                       CollectorPid),
 
