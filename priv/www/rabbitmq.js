@@ -30,21 +30,26 @@
 //
 //
 
-function openRabbitChannel(readyFn, options) {
-    var o = {
+function RabbitMQ_ModuleFactory(JsonRpc, Support) {
+    function openChannel(readyFn, options) {
+	var o = {
         factoryServiceUrl: "/rpc/rabbitmq",
         timeout: 30000 // timeout for the *factory*, not the channel
-    };
+	};
     jQuery.extend(o, options || {});
 
-    var factoryService = new JsonRpcService(o.factoryServiceUrl, onServiceReady, o);
-    function onServiceReady() {
+	var factoryService = new JsonRpc.Service(o.factoryServiceUrl, onServiceReady, o);
+	function onServiceReady() {
 	    new RabbitChannel(factoryService, readyFn, o);
+	}
     }
-}
 
 var RabbitChannel = function(factory, readyFn, options) {
     this._dval = function(v, d) {
+
+	var that = this;
+    Support.extend(Channel.prototype,
+    {
 	    return (v == null) ? d : v;
     };
 
@@ -68,7 +73,6 @@ var RabbitChannel = function(factory, readyFn, options) {
     this._setTicket = function(ticket) {
 	    this.ticket = ticket;
     };
-
     this.accessRequest = function(realm, exclusive, passive, active, write, read) {
         return this._call("access.request", [this._dval(realm, "/data"),
                              this._dval(exclusive, false),
@@ -79,49 +83,48 @@ var RabbitChannel = function(factory, readyFn, options) {
                 .addReplyTransformer(this._extractArg(0))
                 .addCallback(jQuery.shove(this._setTicket, this));
     };
-
     this.exchangeDeclare = function(exchange, type, passive, durable, auto_delete, arguments) {
-        return this._call("exchange.declare", [this.ticket,
-					       exchange,
-					       this._dval(type, "direct"),
-					       this._dval(passive, false),
-					       this._dval(durable, false),
-					       this._dval(auto_delete, false),
-					       false, // internal
-					       false, // nowait
-					       this._dval(arguments, {})]);
+            return this._call("exchange.declare", [this.ticket,
+						   exchange,
+						   this._dval(type, "direct"),
+						   this._dval(passive, false),
+						   this._dval(durable, false),
+						   this._dval(auto_delete, false),
+						   false, // internal
+						   false, // nowait
+						   this._dval(arguments, {})]);
     };
 
     this.queueDeclare = function(queue, passive, durable, exclusive, auto_delete, arguments) {
-        return this._call("queue.declare", [this.ticket,
-					    this._dval(queue, ""),
-					    this._dval(passive, false),
-					    this._dval(durable, false),
-					    this._dval(exclusive, false),
-					    this._dval(auto_delete, true),
-					    false, // nowait
-					    this._dval(arguments, {})])
+            return this._call("queue.declare", [this.ticket,
+						this._dval(queue, ""),
+						this._dval(passive, false),
+						this._dval(durable, false),
+						this._dval(exclusive, false),
+						this._dval(auto_delete, true),
+						false, // nowait
+						this._dval(arguments, {})])
 	        .addReplyTransformer(this._extractArg(0));
-    },
+	},
 
     this.queueDelete = function(queue, if_unused, if_empty) {
-        return this._call("queue.delete", [this.ticket,
-					   this._dval(queue, ""),
-					   this._dval(if_unused, false),
-					   this._dval(if_empty, false),
-					   false // nowait
-					  ])
+            return this._call("queue.delete", [this.ticket,
+					       this._dval(queue, ""),
+					       this._dval(if_unused, false),
+					       this._dval(if_empty, false),
+					       false // nowait
+					      ])
 	        .addReplyTransformer(this._extractArg(0));
-    },
+	},
 
     this.queueBind = function(queue, exchange, routing_key, arguments) {
-        return this._call("queue.bind", [this.ticket,
-					 queue,
-					 exchange,
-					 this._dval(routing_key, ""),
-					 false, // nowait
-					 this._dval(arguments, {})]);
-    },
+            return this._call("queue.bind", [this.ticket,
+					     queue,
+					     exchange,
+					     this._dval(routing_key, ""),
+					     false, // nowait
+					     this._dval(arguments, {})]);
+	},
 
     this.basicConsume = function(queue, consumer, options) {
         o = {
@@ -132,6 +135,7 @@ var RabbitChannel = function(factory, readyFn, options) {
         };
         jQuery.extend(o, options || {});
         return this._call("basic.consume", [this.ticket,
+	    return ch._call("basic.consume", [ch.ticket,
                             queue,
                             o.consumer_tag,
                             o.no_local,
@@ -189,15 +193,16 @@ var RabbitChannel = function(factory, readyFn, options) {
                          this._dval(mandatory, false),
                          this._dval(immediate, false)],
                message, this._amqp_props(props || {}));
-    },
+	},
 
     this.basicAck = function(delivery_tag, multiple) {
         this._cast("basic.ack", [delivery_tag,
                      this._dval(multiple, false)]);
-    },
+	},
 
     this.basicCancel = function(consumer_tag) {
         return this._call("basic.cancel", [consumer_tag,
+	    return ch._call("basic.cancel", [consumer_tag,
                            false // nowait
                           ])
             .addReplyTransformer(this._extractArg(0))
@@ -209,43 +214,24 @@ var RabbitChannel = function(factory, readyFn, options) {
                   }
                   }, this));
     };
-
-/*
-    queue_bind: function(o) {
-        return this.service.call(new QueueBind().update(o));
-    },
-
-    queue_delete : function(o) {
-        return this.service.call(new QueueDelete().update(o));
-    },
-
-    exchange_declare: function(o) {
-        return this.service.call(new ExchangeDeclare().update(o));
-    },
-
-    exchange_delete : function() {
-        //TODO
-    },
-
-    basic_get: function(o) {
-        return this.service.call(new BasicGet().update(o));
-    },
-*/
+	},
 
     this.poll_tophalf = function() {
-        if (this.alive) {
-            this.service.poll()
+	    var ch = this;
+            if (ch.alive) {
                 .addCallback(jQuery.shove(this.handlePollResult, this))
                 .addCallback(jQuery.shove(this.poll_tophalf, this));
+		.addCallback(function () { ch.poll_tophalf() });
 	    }
     };
 
     this.close = function() {
-        if (this.alive) {
-            this.alive = false;
-            this.service.close()
+	    var ch = this;
+            if (ch.alive) {
+		ch.alive = false;
 	            .addCallback(jQuery.shove(this.handlePollResult, this));
-        }
+		.addCallback(function (result) { ch.handlePollResult(result) });
+            }
     };
 
     this.handlePollResult = function(result) {
@@ -254,6 +240,7 @@ var RabbitChannel = function(factory, readyFn, options) {
             try { self.handleAsyncMessage.apply(self, [this]); } catch (err) {if (console) console.error(err)} 
         });
     };
+	    }
 
     this.handleAsyncMessage = function (message) {
         var handler = this["handle_async_" + message.method];
@@ -269,8 +256,8 @@ var RabbitChannel = function(factory, readyFn, options) {
     };
 
     this["handle_async_basic.deliver"] = function(args, content, props) {
-        var consumer = this.consumers[args[0]];
-        if (consumer) {
+            var consumer = this.consumers[args[0]];
+            if (consumer) {
             try {
                 consumer.deliver({content: content,
                           delivery_tag: args[1],
@@ -279,7 +266,7 @@ var RabbitChannel = function(factory, readyFn, options) {
                           routing_key: args[4],
                           props: this._js_props(props)});
             } catch (err) {}
-        }
+            }
     };
 
     this.options = {
@@ -296,13 +283,11 @@ var RabbitChannel = function(factory, readyFn, options) {
     this.consumers = {};
     this.alive = true;
     this.ticket = null;
-
     factory.open(this.options.username,
              this.options.password,
              this.options.channelTimeout,
              this.options.virtualHost)
         .addCallback(jQuery.shove(channel_created, this));
-
     function channel_created(reply) {
         this.service = new JsonRpcService(this.options.rpcServiceUrlBase + reply.service,
                           jQuery.shove(ready, this),
@@ -310,7 +295,6 @@ var RabbitChannel = function(factory, readyFn, options) {
                            debugLogger: this.options.debugLogger,
                            timeout: this.options.channelTimeout * 1000});
     }
-
     function ready(result) {
         this.poll_tophalf();
         jQuery(window).bind('unload', jQuery.shove(this.close, this));
@@ -324,32 +308,12 @@ var RabbitChannel = function(factory, readyFn, options) {
         readyFn(this);
     }
 };
-
 var AmqpRpcClient = function(service, exchange, routing_key) {
     this.sendRequest = function(request, txn) {
-        var correlationId = this.nextCorrelationId++;
-        this.transactionMap[correlationId] = txn;
-        this.sendPendingRequest({request: request, correlationId: correlationId});
     };
-
     this.sendPendingRequest = function(p) {
-        if (this.queueName == null) {
-            this.pendingRequests.push(p);
-        } else {
-            this.amqp.basicPublish(
-                    JSON.stringify(p.request),
-                    this.exchange, this.routing_key, false, false,
-            {reply_to: this.queueName, correlation_id: p.correlationId});
-        }
     };
-
     this.handleReply = function(message) {
-        var response = {responseText: message.message};
-        var id = message.properties.correlation_id;
-        this.transactionMap[id].receiveReply(response);
-        delete this.transactionMap[id];
-    }
-
     log(">>>>>>>>>>>>>>> ampq rpc client initing");
     this.amqp = service;
     this.exchange = exchange;
@@ -378,8 +342,4 @@ var AmqpRpcClient = function(service, exchange, routing_key) {
 var AmqpJsonRpcTransaction = function() {}
 jQuery.extend(AmqpJsonRpcTransaction, JsonRpcTransaction);
 jQuery.extend(AmqpJsonRpcTransaction, {
-    sendRequest: function() {
-        this.serviceUrl.sendRequest(this.buildRequest(), this);
-    }
-});
-
+}

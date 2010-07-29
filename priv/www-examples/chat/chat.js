@@ -46,12 +46,12 @@ function chatMain() {
     $("#userName")[0].value = initUsername();
     $("#chatMessage").focus();
 
-    openRabbitChannel(function (c) {
-			  channel = c;
-			  change_channel();
-		      },
-		      { debug: true,
-			debugLogger: log });
+    RabbitMQ.openChannel(function (c) {
+			     channel = c;
+			     change_channel();
+			 },
+			 { debug: true,
+			   debugLogger: log });
 }
 
 function change_channel() {

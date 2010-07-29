@@ -29,7 +29,8 @@
 //   Contributor(s): ______________________________________.
 //
 
-JsonRpcRequestId = 1;
+function JsonRpc_ModuleFactory(Support) {
+    var requestId = 1;
 
 //
 // Add Prototype-like context binding. Taken from http://www.quirkey.com/blog/2009/02/25/switched-to-jquery
@@ -37,7 +38,7 @@ JsonRpcRequestId = 1;
 jQuery.extend({
     shove: function(fn, object) {
         return  function() { return fn.apply(object, arguments); };
-    },
+    }
 
     toArray: function(iterable) {
         var result = new Array(iterable.length);
@@ -117,6 +118,8 @@ var JsonRpcTransaction = function(serviceUrl, methodName, params, options) {
         var oldAddCallback = jQuery.shove(this.addCallback, this);
         this.addCallback = function(cb) {
             return oldAddCallback(function(reply, is_error) {
+		return oldAddCallback.apply(that,
+					    [function(reply, is_error) {
                           cb(is_error ? reply : xformer(reply), is_error);
                       });
         }
@@ -139,7 +142,7 @@ var JsonRpcTransaction = function(serviceUrl, methodName, params, options) {
             catch (err) {}
         }
         return this;
-    }
+	}
 
     this.options = {
         debug: false,
@@ -156,6 +159,9 @@ var JsonRpcTransaction = function(serviceUrl, methodName, params, options) {
     this.callbacks = [];
     this.errorCallbacks = [];
     this.sendRequest();
+			 function (desc) {
+			     svc.installGenericProxy(desc);
+			 });
 }
 
 JsonRpcService = function(serviceUrl, onReady, options) {
@@ -165,6 +171,9 @@ JsonRpcService = function(serviceUrl, onReady, options) {
         }
         this[desc.name] = function () {
             var actuals = jQuery.toArray(arguments);
+		while (actuals.length < arguments.length) {
+		    actuals.push(arguments[actuals.length]);
+		}
             while (actuals.length < desc.params.length) {
             actuals.push(null);
             }
@@ -174,6 +183,7 @@ JsonRpcService = function(serviceUrl, onReady, options) {
                                    {
                                    debug: this.options.debug,
                                    debugLogger: this.options.debugLogger,
+							         this.options.debugLogger,
                                    timeout: this.options.timeout
                                    });
         };
@@ -198,5 +208,11 @@ JsonRpcService = function(serviceUrl, onReady, options) {
         svc.serviceDescription = sd;
         jQuery.each(svc.serviceDescription.procs, function(i) { svc.installGenericProxy.apply(svc, [this]) });
         onReady();
+    }
+}
+
+    return {
+	Transaction: Transaction,
+	Service: Service
     }
 }

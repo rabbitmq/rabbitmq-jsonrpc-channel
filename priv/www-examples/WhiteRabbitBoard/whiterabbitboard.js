@@ -13,7 +13,7 @@ function setupWhiteRabbitBoard() {
     var queueName;
     var exchangeName = "canvasPainter";
 
-    openRabbitChannel(on_open, { debug: true, debugLogger: log });
+    RabbitMQ.openChannel(on_open, { debug: true, debugLogger: log });
 
     function on_open(c) {
 	channel = c;

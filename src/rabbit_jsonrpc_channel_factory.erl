@@ -28,71 +28,32 @@
 %%
 %%   Contributor(s): ______________________________________.
 %%
--module(rabbit_http).
+-module(rabbit_jsonrpc_channel_factory).
 -behaviour(gen_server).
 
--export([kickstart/0, start_link/0]).
+-export([start_link/0]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
--export([jsonrpc_amqp_invoke/2, jsonrpc_amqp_invoke/3]).
-
-kickstart() ->
-    rfc4627_jsonrpc:start(),
-    {ok, HttpdConf} = application:get_env(rabbit_http_conf),
-    {ok, _} = httpd:start(HttpdConf),
-    {ok, _} = supervisor:start_child(rabbit_sup,
-				     {?MODULE,
-				      {?MODULE, start_link, []},
-				      transient, 100, worker, [?MODULE]}),
-    {ok, _} = rabbit_http_channel_sup:start_link(),
-    ok.
 
 start_link() ->
-    {ok, Pid} = gen_server:start_link(?MODULE, [], []),
-    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
-				      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
-				      <<"1.2">>,
-				      [{<<"open">>, [{"username", str},
-						     {"password", str},
-						     {"sessionTimeout", num},
-						     {"virtualHost", str}]}]),
-    rfc4627_jsonrpc:register_service(Pid, Service),
-    {ok, Pid}.
-
-jsonrpc_amqp_invoke(Name, Fun) ->
-    jsonrpc_amqp_invoke(Name, Fun, fun (X) -> X end).
-
-jsonrpc_amqp_invoke(Name, Fun, ErrorTransformer) ->
-    case catch Fun() of
-        {'EXIT', Reason = {amqp, _, _}} ->
-            {_ShouldClose, Code, TextBin, Method} = rabbit_reader:lookup_amqp_exception(Reason),
-            ErrorJson = {obj, [{"procedure", Name},
-                               {"detail", case Method of
-                                              none -> null;
-                                              M when is_binary(M) -> M;
-                                              M when is_list(M) -> list_to_binary(M);
-                                              M when is_atom(M) -> list_to_binary(atom_to_list(M))
-					  end}]},
-            ErrorTransformer(rfc4627_jsonrpc:error_response(Code, TextBin, ErrorJson));
-        {'EXIT', Reason} ->
-            ErrorTransformer
-              (rfc4627_jsonrpc:error_response(
-                 500,
-                 list_to_binary(lists:flatten(
-                                  io_lib:format("~p: ~p",[Name, Reason]))),
-                 null));
-        Result ->
-            Result
-    end.
+    gen_server:start_link(?MODULE, [], []).
 
 %% -----------------------------------------------------------------------------
 %% gen_server callbacks
 %% -----------------------------------------------------------------------------
 
 init(_Args) ->
+    Service = rfc4627_jsonrpc:service(<<"rabbitmq">>,
+                                      <<"urn:uuid:f98a4235-20a9-4321-a15c-94878a6a14f3">>,
+                                      <<"1.2">>,
+                                      [{<<"open">>, [{"username", str},
+                                                     {"password", str},
+                                                     {"sessionTimeout", num},
+                                                     {"virtualHost", str}]}]),
+    rfc4627_jsonrpc:register_service(self(), Service),
     {ok, nostate}.
 
 handle_call({jsonrpc, <<"open">>, _RequestInfo, Args}, _From, State) ->
-    {ok, Oid} = rabbit_http_channel:open(Args),
+    {ok, Oid} = rabbit_jsonrpc_channel:open(Args),
     {reply,
      {result, {obj, [{service, Oid}]}},
      State}.
