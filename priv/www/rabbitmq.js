@@ -165,7 +165,8 @@ function RabbitMQ_ModuleFactory(JsonRpc, Support) {
 					      o.no_local,
 					      o.no_ack,
 					      o.exclusive,
-					      false // nowait
+					      false, // nowait
+					      []
 					     ])
 	    .addReplyTransformer(ch._extractArg(0))
 	    .addCallback(function (tag) {
