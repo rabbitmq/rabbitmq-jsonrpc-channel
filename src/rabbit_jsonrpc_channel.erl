@@ -225,10 +225,15 @@ guess_amqp_table_value(double, X) -> {ok, X};
 guess_amqp_table_value(bool, X) -> {ok, X};
 guess_amqp_table_value(_, _) -> unknown.
 
+build_content(none, _) ->
+    none;
+build_content(Bin, Props) ->
+    rabbit_basic:build_content(build_props(Props), Bin).
+
 cast(MethodAtom, Args, Content, Props, State = #state{ channel = ChPid }) ->
     ok = rabbit_channel:do(ChPid,
 			   list_to_tuple([MethodAtom | js_to_amqp(Args)]),
-			   rabbit_basic:build_content(build_props(Props), Content)),
+			   build_content(Content, Props)),
     State.
 
 check_cast(Method, Args, Content, Props, StateBad, StateOk, K) ->
