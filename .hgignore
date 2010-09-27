@@ -1,4 +1,5 @@
 \.beam$
 ^tmp
-^build/
 ^dist/
+^ebin/rabbit_jsonrpc_channel.app$
+^deps.mk$
