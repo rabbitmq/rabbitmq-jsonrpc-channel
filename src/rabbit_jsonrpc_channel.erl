@@ -272,8 +272,13 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     U = rabbit_access_control:user_pass_login(Username, Password),
     ok = rabbit_access_control:check_vhost_access(U, VHostPath),
     {ok, CollectorPid} = rabbit_queue_collector:start_link(),
-    {ok, ChPid} = rabbit_channel:start_link(?CHANNELID, self(), self(),
-                                            Username, VHostPath, CollectorPid),
+    {ok, ChPid} =
+        rabbit_channel:start_link(
+          ?CHANNELID, self(), self(), Username, VHostPath, CollectorPid,
+          fun (UnackedCount) ->
+                  Me = self(),
+                  {ok, _Pid} = rabbit_limiter:start_link(Me, UnackedCount)
+          end),
 
     ok = rabbit_channel:do(ChPid, #'channel.open'{}),
     {ok,
