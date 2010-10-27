@@ -31,8 +31,7 @@
 -module(rabbit_jsonrpc_channel).
 -behaviour(gen_server).
 
--include_lib("rabbit_common/include/rabbit.hrl").
--include_lib("rabbit_common/include/rabbit_framing.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -export([open/1, start_link/2]).
 -export([init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, handle_info/2]).
@@ -62,14 +61,14 @@ start_link(Oid, Args) ->
 %---------------------------------------------------------------------------
 
 -record(state, {channel,
-                collector,
+                connection,
 		oid,
 		vhost,
 		realm,
 		ticket,
 		timeout_millisec,
 		state,
-		waiting_rpcs,
+                waiting_rpcs,
 		waiting_polls,
 		outbound}).
 
@@ -132,11 +131,12 @@ check_outbound(State0 = #state{ waiting_polls = [LuckyWaiter | Waiting] }) ->
             release_waiters(empty_poll_result(), State#state{ waiting_polls = Waiting })
     end.
 
-release_collector(State = #state{ collector = none }) ->
+close_connection(State = #state { connection = none }) ->
     State;
-release_collector(State = #state{ collector = CollectorPid }) ->
-    ok = rabbit_queue_collector:delete_all(CollectorPid),
-    State#state{ collector = none }.
+close_connection(State = #state { connection = Conn, channel = Ch }) ->
+    ok = amqp_channel:close(Ch),
+    ok = amqp_connection:close(Conn),
+    State#state{connection = none, channel = none}.
 
 final_cleanup(RpcResponse, State0) ->
     State = #state{ waiting_rpcs = WaitingRpcs } =
@@ -153,7 +153,7 @@ method_result(Command, ExtraFields) ->
            {"args", Args}
            | ExtraFields]}.
 
-do_send_command(Command, State = #state{waiting_rpcs = WaitingRpcs}) ->
+do_receive_reply(Command, State = #state{waiting_rpcs = WaitingRpcs}) ->
     case queue:out(WaitingRpcs) of
 	{{value, From}, WaitingRpcsTail} ->
 	    gen_server:reply(From, {result, method_result(Command)}),
@@ -163,13 +163,11 @@ do_send_command(Command, State = #state{waiting_rpcs = WaitingRpcs}) ->
 	    State
     end.
 
-do_send_async(Command,
-	      #content{properties = Props,
-		       payload_fragments_rev = BodyFragmentsRev},
-	      State = #state{outbound = Outbound}) ->
+do_receive_async(Method, #amqp_msg{props = Props, payload = Payload},
+                 State = #state{outbound = Outbound}) ->
     ['P_basic' | PropValues] = tuple_to_list(Props),
-    Result = method_result(Command,
-                           [{"content", list_to_binary(lists:reverse(BodyFragmentsRev))},
+    Result = method_result(Method,
+                           [{"content", Payload},
                             {"props", amqp_to_js(PropValues)}]),
     check_outbound(State#state{outbound = queue:in(Result, Outbound)}).
 
@@ -228,33 +226,37 @@ guess_amqp_table_value(_, _) -> unknown.
 build_content(none, _) ->
     none;
 build_content(Bin, Props) ->
-    rabbit_basic:build_content(build_props(Props), Bin).
+    #amqp_msg{props = build_props(Props), payload = Bin}.
 
-cast(MethodAtom, Args, Content, Props, State = #state{ channel = ChPid }) ->
-    ok = rabbit_channel:do(ChPid,
-			   list_to_tuple([MethodAtom | js_to_amqp(Args)]),
-			   build_content(Content, Props)),
+cast(Method, Content, State = #state{ channel = Ch }) ->
+    ok = amqp_channel:cast(Ch, Method, Content),
     State.
 
-check_cast(Method, Args, Content, Props, StateBad, StateOk, K) ->
-    case catch list_to_existing_atom(binary_to_list(Method)) of
+call(Method=#'basic.consume'{}, _Content, State = #state{ channel = Ch }) ->
+    Reply = amqp_channel:subscribe(Ch, Method, self()),
+    do_receive_reply(Reply, State);
+call(Method, Content, State = #state{ channel = Ch }) ->
+    Reply = amqp_channel:call(Ch, Method, Content),
+    do_receive_reply(Reply, State).
+
+check_invoke(MethodName, Args, Content, Props, StateBad, StateOk, Send, K) ->
+    case catch list_to_existing_atom(binary_to_list(MethodName)) of
 	{'EXIT', {badarg, _}} ->
 	    reply(rfc4627_jsonrpc:error_response(404, "AMQP method not found",
-						 {obj, [{"method", Method},
+						 {obj, [{"method", MethodName},
 							{"args", Args}]}),
 		  StateBad);
 	'channel.close' ->
 	    %% Forbid client-originated channel.close. We wrap
 	    %% channel.close in our own close method.
 	    reply(rfc4627_jsonrpc:error_response(405, "AMQP method not allowed",
-						 {obj, [{"method", Method}]}),
+						 {obj, [{"method", MethodName}]}),
 		  StateBad);
 	MethodAtom ->
-	    K(cast(MethodAtom,
-                   Args,
-                   default_param(Content, none),
-                   default_param(Props, #'P_basic'{}),
-                   StateOk))
+            Method = list_to_tuple([MethodAtom | js_to_amqp(Args)]),
+            Content1 = build_content(default_param(Content, none),
+                                     default_param(Props, #'P_basic'{})),
+	    K(Send(Method, Content1, StateOk))
     end.
 
 %---------------------------------------------------------------------------
@@ -267,27 +269,20 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     rabbit_log:debug("HTTP Channel started, timeout ~p~n", [SessionTimeout]),
     SessionTimeoutMs = SessionTimeout * 1000,
 
-    process_flag(trap_exit, true),
-
-    U = rabbit_access_control:user_pass_login(Username, Password),
-    ok = rabbit_access_control:check_vhost_access(U, VHostPath),
-    {ok, CollectorPid} = rabbit_queue_collector:start_link(),
-    {ok, ChPid} =
-        rabbit_channel:start_link(
-          ?CHANNELID, self(), self(), Username, VHostPath, CollectorPid,
-          fun (UnackedCount) ->
-                  Me = self(),
-                  {ok, _Pid} = rabbit_limiter:start_link(Me, UnackedCount)
-          end),
-
-    ok = rabbit_channel:do(ChPid, #'channel.open'{}),
+    Params = #amqp_params{username = Username,
+                          password = Password,
+                          virtual_host = VHostPath},
+    {ok, Conn} = amqp_connection:start(direct, Params),
+    {ok, Ch} = amqp_connection:open_channel(Conn),
+    %% The test suite basic.cancels a tag that does not exist. That is allowed
+    %% but we need a default consumer for the cancel_ok.
+    ok = amqp_channel:register_default_consumer(Ch, self()),
     {ok,
-     #state{channel = ChPid,
-            collector = CollectorPid,
+     #state{channel = Ch,
+            connection = Conn,
             oid = Oid,
             vhost = VHostPath,
             timeout_millisec = SessionTimeoutMs,
-            state = opening,
             waiting_rpcs = queue:new(),
             waiting_polls = [],
             outbound = queue:new()},
@@ -297,19 +292,19 @@ handle_call({jsonrpc, <<"poll">>, _RequestInfo, []}, From, State) ->
     noreply(enqueue_waiter(From, State));
 handle_call({jsonrpc, <<"close">>, _RequestInfo, []}, _From, State0) ->
     %%% FIXME: somehow propagate some of the args into the close reason given to other callers?
-    %%% FIXME: actually call channel.close?
     rabbit_log:debug("HTTP Channel closing by request.~n"),
     {OutboundList, State} = pop_outbound(State0),
-    {stop, normal, {result, OutboundList}, release_collector(State)};
+    {stop, normal, {result, OutboundList}, close_connection(State)};
 handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
-	    State = #state{waiting_rpcs = WaitingRpcs}) ->
-    check_cast(Method, Args, none, #'P_basic'{}, State, State#state{waiting_rpcs =
-								    queue:in(From,
-									     WaitingRpcs)},
-               fun noreply/1);
+            State = #state{waiting_rpcs = WaitingRpcs}) ->
+    check_invoke(Method, Args, none, #'P_basic'{}, State,
+                 State#state{waiting_rpcs = queue:in(From, WaitingRpcs)},
+                 fun call/3,
+                 fun noreply/1);
 handle_call({jsonrpc, <<"cast">>, _RequestInfo, [Method, Args, Content, Props]}, _From, State) ->
-    check_cast(Method, Args, Content, Props, State, State,
-               fun (State1) -> reply({result, []}, State1) end);
+    check_invoke(Method, Args, Content, Props, State, State,
+                 fun cast/3,
+                 fun (State1) -> reply({result, []}, State1) end);
 handle_call(Request, _From, State) ->
     error_logger:error_msg("Unhandled call in ~p: ~p", [?MODULE, Request]),
     reply({result, not_supported}, State).
@@ -318,46 +313,45 @@ handle_cast(Request, State) ->
     error_logger:error_msg("Unhandled cast in ~p: ~p", [?MODULE, Request]),
     noreply(State).
 
-handle_info({send_command, #'channel.open_ok'{}}, State = #state{state = opening}) ->
-    noreply(State#state{state = ready});
-handle_info({send_command, Command}, State) ->
-    noreply(do_send_command(Command, State));
-handle_info({send_command_and_notify, QPid, TxPid, Command, Content}, State) ->
-    rabbit_amqqueue:notify_sent(QPid, TxPid),
-    noreply(do_send_async(Command, Content, State));
-
 handle_info(timeout, State = #state{waiting_polls = []}) ->
     rabbit_log:debug("HTTP Channel timed out, closing.~n"),
     {stop, normal, State};
 handle_info(timeout, State) ->
     noreply(release_waiters(empty_poll_result(), State));
-
 handle_info(shutdown, State) ->
     rabbit_log:debug("HTTP Channel writer shutdown requested.~n"),
     %% We're going to close pretty soon anyway. No special action needed here.
     noreply(State);
-
-handle_info({channel_exit, _ChannelId, #amqp_error{name = ErrorName,
-                                                   explanation = Explanation,
-                                                   method = MethodName}},
-            State) ->
-    Detail = {obj, [{code, list_to_binary(atom_to_list(ErrorName))},
-                    {text, list_to_binary(Explanation)},
-                    {method, list_to_binary(atom_to_list(MethodName))}]},
-    {stop, normal, final_cleanup(rfc4627_jsonrpc:error_response(500, "AMQP error", Detail),
-                                 State)};
-handle_info({'EXIT', Pid, Reason}, State) ->
-    Detail = {obj, [{pid, list_to_binary(io_lib:format("~p", [Pid]))},
-                    {reason, list_to_binary(io_lib:format("~p", [Reason]))}]},
-    {stop, normal, final_cleanup(rfc4627_jsonrpc:error_response(500, "Internal error", Detail),
-                                 State)};
+handle_info(#'channel.close'{reply_code = ErrorCode,
+                             reply_text = ErrorText,
+                             method_id = MethodId}, State) ->
+    handle_close(channel, ErrorCode, ErrorText, MethodId, State);
+handle_info(#'connection.close'{reply_code = ErrorCode,
+                                reply_text = ErrorText,
+                                method_id = MethodId}, State) ->
+    handle_close(connection, ErrorCode, ErrorText, MethodId, State);
+handle_info(#'basic.consume_ok'{}, State) ->
+    noreply(State);
+handle_info(#'basic.cancel_ok'{}, State) ->
+    noreply(State);
+handle_info({Method, Content}, State) ->
+    noreply(do_receive_async(Method, Content, State));
 handle_info(Info, State) ->
     error_logger:error_msg("Unhandled info in ~p: ~p", [?MODULE, Info]),
     noreply(State).
 
+handle_close(Type, ErrorCode, ErrorText, MethodId, State) ->
+    Detail = {obj, [{type, Type},
+                    {code, list_to_binary(atom_to_list(ErrorCode))},
+                    {text, list_to_binary(ErrorText)},
+                    {method, list_to_binary(atom_to_list(MethodId))}]},
+    {stop, normal, final_cleanup(
+                     rfc4627_jsonrpc:error_response(500, "AMQP error", Detail),
+                     State)}.
+
 terminate(_Reason, State) ->
     _State1 = final_cleanup(rfc4627_jsonrpc:error_response(504, "Closed", null),
-                            release_collector(State)),
+                            close_connection(State)),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
