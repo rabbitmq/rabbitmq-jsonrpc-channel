@@ -62,15 +62,15 @@ start_link(Oid, Args) ->
 
 -record(state, {channel,
                 connection,
-		oid,
-		vhost,
-		realm,
-		ticket,
-		timeout_millisec,
-		state,
+                oid,
+                vhost,
+                realm,
+                ticket,
+                timeout_millisec,
+                state,
                 waiting_rpcs,
-		waiting_polls,
-		outbound}).
+                waiting_polls,
+                outbound}).
 
 compute_timeout(#state{timeout_millisec = T, waiting_polls = []}) ->
     T;
