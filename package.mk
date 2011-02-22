@@ -1,3 +1,6 @@
 RELEASABLE:=true
 DEPS:=rabbitmq-server rabbitmq-erlang-client erlang-rfc4627-wrapper rabbitmq-mochiweb mochiweb-wrapper rabbitmq-jsonrpc
-EXTRA_PACKAGE_DIRS:=$(PACKAGE_DIR)/priv
+
+define construct_app_commands
+	cp -r $(PACKAGE_DIR)/priv $(APP_DIR)
+endef
