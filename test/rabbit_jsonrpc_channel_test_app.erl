@@ -4,9 +4,10 @@
 -export([start/2,stop/1]).
 
 start(_Type, _StartArgs) ->
-    ok = rabbit_mochiweb:register_static_context("rpc-examples", ?MODULE,
-                                                 "priv/www-examples",
-                                                 "JSON-RPC: examples"),
+    {ok, _} = rabbit_mochiweb:register_static_context(jsonrpc_examples,
+                                                      "rpc-examples", ?MODULE,
+                                                      "priv/www-examples",
+                                                      "JSON-RPC: examples"),
     {ok, spawn(fun loop/0)}.
 
 stop(_State) ->

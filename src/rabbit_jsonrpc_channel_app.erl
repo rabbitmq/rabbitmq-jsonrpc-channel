@@ -8,7 +8,8 @@ start(_Type, _StartArgs) ->
         {ok, Root} -> Root;
         undefined  -> "rabbitmq_lib"
     end,
-    rabbit_mochiweb:register_static_context(ContextRoot, ?MODULE, "priv/www",
+    rabbit_mochiweb:register_static_context(jsonrpc_lib,
+                                            ContextRoot, ?MODULE, "priv/www",
                                             none),
     rabbit_jsonrpc_channel_app_sup:start_link().
 
