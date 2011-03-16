@@ -269,9 +269,11 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     rabbit_log:debug("HTTP Channel started, timeout ~p~n", [SessionTimeout]),
     SessionTimeoutMs = SessionTimeout * 1000,
 
+    AdapterInfo = #adapter_info{protocol = {'JSON-RPC', "1.0"}},
     Params = #amqp_params{username = Username,
                           password = Password,
-                          virtual_host = VHostPath},
+                          virtual_host = VHostPath,
+                          adapter_info = AdapterInfo},
     {ok, Conn} = amqp_connection:start(direct, Params),
     {ok, Ch} = amqp_connection:open_channel(Conn),
     %% The test suite basic.cancels a tag that does not exist. That is allowed
