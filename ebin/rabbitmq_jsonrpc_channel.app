@@ -1,4 +1,4 @@
-{application, rabbit_jsonrpc_channel,
+{application, rabbitmq_jsonrpc_channel,
  [{description, "RabbitMQ JSON-RPC Channels"},
   {vsn, "%%VSN%%"},
   {modules, [

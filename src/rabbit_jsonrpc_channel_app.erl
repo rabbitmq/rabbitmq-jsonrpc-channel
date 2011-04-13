@@ -4,7 +4,7 @@
 -export([start/2,stop/1]).
 
 start(_Type, _StartArgs) ->
-    ContextRoot = case application:get_env(rabbit_jsonrpc_channel, js_root) of
+    ContextRoot = case application:get_env(rabbitmq_jsonrpc_channel, js_root) of
         {ok, Root} -> Root;
         undefined  -> "rabbitmq_lib"
     end,
