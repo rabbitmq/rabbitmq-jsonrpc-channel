@@ -270,11 +270,11 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     SessionTimeoutMs = SessionTimeout * 1000,
 
     AdapterInfo = #adapter_info{protocol = {'JSON-RPC', "1.0"}},
-    Params = #amqp_params{username = Username,
-                          password = Password,
-                          virtual_host = VHostPath,
-                          adapter_info = AdapterInfo},
-    {ok, Conn} = amqp_connection:start(direct, Params),
+    {ok, _} = rabbit_access_control:check_user_pass_login(Username, Password),
+    Params = #amqp_params_direct{username     = Username,
+                                 virtual_host = VHostPath,
+                                 adapter_info = AdapterInfo},
+    {ok, Conn} = amqp_connection:start(Params),
     {ok, Ch} = amqp_connection:open_channel(Conn),
     %% The test suite basic.cancels a tag that does not exist. That is allowed
     %% but we need a default consumer for the cancel_ok.
