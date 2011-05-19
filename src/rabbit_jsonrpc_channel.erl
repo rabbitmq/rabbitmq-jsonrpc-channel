@@ -266,7 +266,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     {ok, DefaultVHost} = application:get_env(default_vhost),
     VHostPath = default_param(VHostPath0, DefaultVHost),
 
-    rabbit_log:debug("HTTP Channel started, timeout ~p~n", [SessionTimeout]),
+    rabbit_log:info("HTTP Channel started, timeout ~p~n", [SessionTimeout]),
     SessionTimeoutMs = SessionTimeout * 1000,
 
     AdapterInfo = #adapter_info{protocol = {'JSON-RPC', "1.0"}},
@@ -294,7 +294,7 @@ handle_call({jsonrpc, <<"poll">>, _RequestInfo, []}, From, State) ->
     noreply(enqueue_waiter(From, State));
 handle_call({jsonrpc, <<"close">>, _RequestInfo, []}, _From, State0) ->
     %%% FIXME: somehow propagate some of the args into the close reason given to other callers?
-    rabbit_log:debug("HTTP Channel closing by request.~n"),
+    rabbit_log:info("HTTP Channel closing by request.~n"),
     {OutboundList, State} = pop_outbound(State0),
     {stop, normal, {result, OutboundList}, close_connection(State)};
 handle_call({jsonrpc, <<"call">>, _RequestInfo, [Method, Args]}, From,
@@ -316,12 +316,12 @@ handle_cast(Request, State) ->
     noreply(State).
 
 handle_info(timeout, State = #state{waiting_polls = []}) ->
-    rabbit_log:debug("HTTP Channel timed out, closing.~n"),
+    rabbit_log:info("HTTP Channel timed out, closing.~n"),
     {stop, normal, State};
 handle_info(timeout, State) ->
     noreply(release_waiters(empty_poll_result(), State));
 handle_info(shutdown, State) ->
-    rabbit_log:debug("HTTP Channel writer shutdown requested.~n"),
+    rabbit_log:info("HTTP Channel writer shutdown requested.~n"),
     %% We're going to close pretty soon anyway. No special action needed here.
     noreply(State);
 handle_info(#'channel.close'{reply_code = ErrorCode,
