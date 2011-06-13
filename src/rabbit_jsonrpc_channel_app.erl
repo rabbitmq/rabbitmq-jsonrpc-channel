@@ -10,7 +10,7 @@ start(_Type, _StartArgs) ->
     end,
     rabbit_mochiweb:register_static_context(jsonrpc_lib,
                                             ContextRoot, ?MODULE, "priv/www",
-                                            none),
+                                            "JSON-RPC: JavaScript library"),
     rabbit_jsonrpc_channel_app_sup:start_link().
 
 stop(_State) ->
