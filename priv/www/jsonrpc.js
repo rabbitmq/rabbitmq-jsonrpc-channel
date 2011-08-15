@@ -78,7 +78,17 @@ function JsonRpc_ModuleFactory(Support) {
 	},
 
 	receiveReply: function(ajaxRequest) {
-	    var response = JSON.parse(ajaxRequest.responseText);
+	    var response;
+            try {
+                response = JSON.parse(ajaxRequest.responseText);
+            } catch (e) {
+                if (this.options.debug) {
+		    this.debugLog("Error parsing JSON:" +
+				  "\nService: " + JSON.stringify(this.serviceUrl) +
+				  "\nResponse: " + ajaxRequest.responseText);
+		}
+                throw e;
+            }
 	    if (response.error) {
 		if (this.options.debug) {
 		    this.debugLog("JsonRPC error:" +
