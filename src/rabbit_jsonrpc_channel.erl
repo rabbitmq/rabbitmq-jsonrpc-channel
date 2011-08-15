@@ -278,7 +278,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     {ok, Ch} = amqp_connection:open_channel(Conn),
     %% The test suite basic.cancels a tag that does not exist. That is allowed
     %% but we need a default consumer for the cancel_ok.
-    ok = amqp_channel:register_default_consumer(Ch, self()),
+    ok = amqp_selective_consumer:register_default_consumer(Ch, self()),
     {ok,
      #state{channel = Ch,
             connection = Conn,
