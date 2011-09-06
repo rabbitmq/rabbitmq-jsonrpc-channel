@@ -14,4 +14,5 @@ start(_Type, _StartArgs) ->
     rabbit_jsonrpc_channel_app_sup:start_link().
 
 stop(_State) ->
+    rabbit_mochiweb:unregister_context(jsonrpc_lib),
     ok.
