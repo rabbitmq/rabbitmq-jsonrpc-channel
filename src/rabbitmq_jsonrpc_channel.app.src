@@ -7,4 +7,4 @@
   {env, [
         {default_vhost, <<"/">>}
         ]},
-  {applications, [kernel, stdlib, rabbitmq_jsonrpc]}]}.
+  {applications, [kernel, stdlib, rabbitmq_jsonrpc, rabbit, amqp_client]}]}.
