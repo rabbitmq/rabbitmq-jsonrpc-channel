@@ -1,34 +1,15 @@
-You will need:
+The RabbitMQ JSON-RPC-channel plugin is included in the RabbitMQ
+distribution.  To enable it, use:
 
- - GNU make
- - Erlang
+    rabbitmq-plugins enable rabbitmq_jsonrpc_channel
 
-To compile the RabbitMQ JSON-RPC-channel plugin, you will need to
-download rabbitmq-public-umbrella package:
-
-    hg clone http://hg.rabbitmq.com/rabbitmq-public-umbrella
-
-The umbrella is a placeholder for various packages. You need to
-actually download and compile the dependencies. The simplest way is to
-run:
-
-    cd rabbitmq-public-umbrella
-    make co
-    make
-
-This will download and compile all the rabbitmq related packages.
-
-To build a plugin package (*.ez file), run 'make package' from the
-rabbitmq-jsonrpc-channel directory. Package should appear in 'dist'
-directory.
-
-    cd rabbitmq-jsonrpc-channel
-    make package
-    ls dist/rabbitmq-jsonrpc-channel.ez
+You can also compile and install it like any other plugin (see
+http://www.rabbitmq.com/plugin-development.html).
 
 To install and activate the RabbitMQ JSON-RPC channel plugin, copy all
-the .ez packages *except rabbit_common.ez* from the 'dist' directory
-into the RabbitMQ server's plugin directory and restart rabbit.
+the .ez packages *except rabbit_common* from the plugin's 'dist'
+directory into the RabbitMQ server's plugin directory, use the command
+at the top to enable rabbitmq_jsonrpc_channel, and restart rabbit.
 
 Once the server starts successfully, you should be able to point your
 web browser at
