@@ -3,6 +3,12 @@ distribution.  To enable it, use:
 
     rabbitmq-plugins enable rabbitmq_jsonrpc_channel
 
+You may wish to also use:
+
+    rabbitmq-plugins enable rabbitmq_jsonrpc_channel_examples
+
+to serve a couple of demo webapps.
+
 You can also compile and install it like any other plugin (see
 http://www.rabbitmq.com/plugin-development.html).
 
@@ -14,11 +20,11 @@ at the top to enable rabbitmq_jsonrpc_channel, and restart rabbit.
 Once the server starts successfully, you should be able to point your
 web browser at
 
-  http://localhost:55672/rpc/rabbitmq
+  http://localhost:55670/rpc/rabbitmq
 
 and get an error along the lines of
 
-  {"version":"1.1","id":null,"error":{"name":"JSONRPCError","code":404,"message":"Procedure not found","error":["http://localhost:55672/rpc/rabbitmq",""]}}
+  {"version":"1.1","id":null,"error":{"name":"JSONRPCError","code":404,"message":"Procedure not found","error":["http://localhost:55670/rpc/rabbitmq",""]}}
 
 which confirms that the RabbitMQ JSON-RPC channel is ready to accept
 requests.
@@ -30,10 +36,10 @@ rabbitmq-jsonrpc-channel directory. This will start a RabbitMQ broker
 with the examples configured. You should be able to point your web
 browser at
 
- http://localhost:55672/
+ http://localhost:55670/
 
 and get a webpage. Clicking on "Simple JSONRPC test" will run a small
-test application. Successful output of http://localhost:55672/test/index.html
+test application. Successful output of http://localhost:55670/test/index.html
 at the time of writing is:
 
   test_main
