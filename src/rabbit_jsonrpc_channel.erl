@@ -255,7 +255,7 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     rabbit_log:info("HTTP Channel started, timeout ~p~n", [SessionTimeout]),
     SessionTimeoutMs = SessionTimeout * 1000,
 
-    AdapterInfo = #adapter_info{protocol = {'JSON-RPC', "1.0"}},
+    AdapterInfo = #amqp_adapter_info{protocol = {'JSON-RPC', "1.0"}},
     {ok, _} = rabbit_access_control:check_user_pass_login(Username, Password),
     Params = #amqp_params_direct{username     = Username,
                                  virtual_host = VHostPath,
