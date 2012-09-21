@@ -256,8 +256,8 @@ init([Oid, [Username, Password, SessionTimeout0, VHostPath0]]) ->
     SessionTimeoutMs = SessionTimeout * 1000,
 
     AdapterInfo = #amqp_adapter_info{protocol = {'JSON-RPC', "1.0"}},
-    {ok, _} = rabbit_access_control:check_user_pass_login(Username, Password),
     Params = #amqp_params_direct{username     = Username,
+                                 password     = Password,
                                  virtual_host = VHostPath,
                                  adapter_info = AdapterInfo},
     {ok, Conn} = amqp_connection:start(Params),
