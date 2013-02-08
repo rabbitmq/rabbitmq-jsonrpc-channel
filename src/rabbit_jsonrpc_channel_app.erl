@@ -24,12 +24,12 @@ start(_Type, _StartArgs) ->
         {ok, Root} -> Root;
         undefined  -> "rabbitmq_lib"
     end,
-    rabbit_mochiweb:register_static_context(jsonrpc_lib,
+    rabbit_web_dispatch:register_static_context(jsonrpc_lib,
                                             rabbit_jsonrpc:listener(),
                                             ContextRoot, ?MODULE, "priv/www",
                                             "JSON-RPC: JavaScript library"),
     rabbit_jsonrpc_channel_app_sup:start_link().
 
 stop(_State) ->
-    rabbit_mochiweb:unregister_context(jsonrpc_lib),
+    rabbit_web_dispatch:unregister_context(jsonrpc_lib),
     ok.
