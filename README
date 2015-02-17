@@ -1,3 +1,6 @@
+/!\ Repository moved to GitHub: https://github.com/rabbitmq/rabbitmq-jsonrpc-channel
+    This is a stale read-only repository.
+
 The RabbitMQ JSON-RPC-channel plugin is included in the RabbitMQ
 distribution.  To enable it, use:
 
