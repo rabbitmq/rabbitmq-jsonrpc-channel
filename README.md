@@ -1,13 +1,18 @@
-The RabbitMQ JSON-RPC-channel plugin is included in the RabbitMQ
-distribution.  To enable it, use:
+# RabbitMQ JSON RPC Plugin
 
-    rabbitmq-plugins enable rabbitmq_jsonrpc_channel
+This plugin is **deprecated** and **is not under active development**. Team RabbitMQ **recommends
+against** its use.
 
-You may wish to also use:
+## Binary Builds for RabbitMQ 3.6.0
 
-    rabbitmq-plugins enable rabbitmq_jsonrpc_channel_examples
+None are provided by the RabbitMQ team (see above).
 
-to serve a couple of demo webapps.
+## Binary Builds for RabbitMQ 3.5.x
+
+Available from the [Community Plugins archive](http://www.rabbitmq.com/community-plugins/),
+as well as its dependencies, [rabbitmq_jsonrpc](http://www.rabbitmq.com/community-plugins/v3.5.x/rabbitmq_jsonrpc-3.5.x-c34cb475.ez) and [erlang-rfc4627](http://www.rabbitmq.com/community-plugins/v3.5.x/rfc4627_jsonrpc-3.5.x-git5e67120.ez).
+
+## Building From Source
 
 You can also compile and install it like any other plugin (see
 http://www.rabbitmq.com/plugin-development.html).
@@ -18,13 +23,13 @@ directory into the RabbitMQ server's plugin directory, use the command
 at the top to enable rabbitmq_jsonrpc_channel, and restart rabbit.
 
 Once the server starts successfully, you should be able to point your
-web browser at
-
-  http://localhost:15670/rpc/rabbitmq
+web browser at [http://localhost:15670/rpc/rabbitmq](http://localhost:15670/rpc/rabbitmq)
 
 and get an error along the lines of
 
-  {"version":"1.1","id":null,"error":{"name":"JSONRPCError","code":404,"message":"Procedure not found","error":["http://localhost:15670/rpc/rabbitmq",""]}}
+```
+{"version":"1.1","id":null,"error":{"name":"JSONRPCError","code":404,"message":"Procedure not found","error":["http://localhost:15670/rpc/rabbitmq",""]}}
+```
 
 which confirms that the RabbitMQ JSON-RPC channel is ready to accept
 requests.
@@ -34,14 +39,12 @@ The plugin ships with some examples. To try these, ensure no existing
 RabbitMQ broker is running and then type 'make run' in the
 rabbitmq-jsonrpc-channel directory. This will start a RabbitMQ broker
 with the examples configured. You should be able to point your web
-browser at
-
- http://localhost:15670/
-
+browser at [http://localhost:15670/](http://localhost:15670/)
 and get a webpage. Clicking on "Simple JSONRPC test" will run a small
 test application. Successful output of http://localhost:15670/test/index.html
 at the time of writing is:
 
+```
   test_main
   {"installGenericProxy":{"name":"open","idempotent":false,"params":[{"name":"username","type":"str"},{"name":"password","type":"str"},{"name":"sessionTimeout","type":"num"},{"name":"virtualHost","type":"str"}]}}
   open
@@ -65,13 +68,9 @@ at the time of writing is:
   {"delivery4":{"content":"One","delivery_tag":1,"redelivered":false,"exchange":"","routing_key":"test-queue-4","props":{"content_type":null,"content_encoding":null,"headers":null,"delivery_mode":null,"priority":null,"correlation_id":null,"reply_to":null,"expiration":null,"message_id":null,"timestamp":null,"type":null,"user_id":null,"app_id":null,"cluster_id":null}}}
   {"never existed":"this-never-existed"}
   {"cancelled":"my-consumer"}
+```
 
 The source to the test program is in
 
-  priv/www-examples/test/test.js and
-  priv/www-examples/test/index.html
-
-
-For any questions, comments and suggestions regarding the RabbitMQ
-JSON-RPC channel plugin, please post to the RabbitMQ mailing list at
-http://lists.rabbitmq.com/cgi-bin/mailman/listinfo/rabbitmq-discuss
+ * priv/www-examples/test/test.js and
+ * priv/www-examples/test/index.html
