@@ -1,4 +1,4 @@
-# RabbitMQ JSON RPC Plugin
+# RabbitMQ JSON RPC Channel Plugin
 
 This plugin is **deprecated** and **is not under active development**. Team RabbitMQ **recommends
 against** its use.
